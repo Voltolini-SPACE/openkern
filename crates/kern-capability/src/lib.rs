@@ -185,6 +185,30 @@ impl Capability {
         &self.id
     }
 
+    /// The grantee agent.
+    #[must_use]
+    pub fn agent(&self) -> &AgentId {
+        &self.agent
+    }
+
+    /// The bound mission.
+    #[must_use]
+    pub fn mission(&self) -> &MissionId {
+        &self.mission
+    }
+
+    /// The bound repository.
+    #[must_use]
+    pub fn repository(&self) -> &RepositoryId {
+        &self.repository
+    }
+
+    /// The bound worktree, if any.
+    #[must_use]
+    pub fn worktree(&self) -> Option<&WorktreeId> {
+        self.worktree.as_ref()
+    }
+
     /// Wrap in a grant with `uses` allowed invocations.
     #[must_use]
     pub fn grant(self, uses: u32) -> CapabilityGrant {
@@ -234,6 +258,27 @@ impl CapabilityGrant {
         self.check(req, now)?;
         self.uses_remaining -= 1;
         Ok(OperationId::generate())
+    }
+
+    /// Authorize an operation that stays within the grant's own bound agent/mission/repo,
+    /// specifying only the operation label and its risk. Convenience for governed callers
+    /// (e.g. the transactional Git layer) that operate strictly on the granted target.
+    pub fn authorize_operation(
+        &mut self,
+        operation: impl Into<String>,
+        risk: RiskClass,
+        now: SystemTime,
+    ) -> Result<OperationId, Denied> {
+        let cap = &self.capability;
+        let mut req = AccessRequest::new(
+            cap.agent.clone(),
+            cap.mission.clone(),
+            cap.repository.clone(),
+            operation,
+            risk,
+        );
+        req.worktree = cap.worktree.clone();
+        self.authorize(&req, now)
     }
 
     fn check(&self, req: &AccessRequest, now: SystemTime) -> Result<(), Denied> {
@@ -427,5 +472,19 @@ mod tests {
             g.authorize(&req, T0),
             Err(Denied::NetworkNotAllowed(_))
         ));
+    }
+
+    #[test]
+    fn authorize_operation_uses_bound_target() {
+        let mut g = Capability::new(base_spec()).grant(2);
+        assert!(g
+            .authorize_operation("git.status", RiskClass::ReadOnly, T0)
+            .is_ok());
+        assert_eq!(g.uses_remaining(), 1);
+        assert_eq!(
+            g.authorize_operation("git.push", RiskClass::ReadOnly, T0),
+            Err(Denied::OperationNotGranted("git.push".into()))
+        );
+        assert_eq!(g.uses_remaining(), 1);
     }
 }
