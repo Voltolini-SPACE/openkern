@@ -16,6 +16,16 @@ are distinguished; nothing is upgraded for schedule.
   profiles, or a VM) is future work.
 - **network allow-list: UNSUPPORTED.** Only `DenyAll` (by not granting network) and the
   refusal path are modeled; a real allow-list enforcement primitive is not implemented.
+- **`setsid` escape from process-group teardown.** The host exec backend kills the child's
+  process group, which reaps children and grandchildren *in that group*. A process that
+  deliberately double-forks and `setsid`s into a new session escapes and would not be
+  reaped. Containing that needs OS-level PID isolation (the deferred sandbox). Tracked, not
+  claimed as solved.
+- **Git filter/attribute containment depth.** The governed runner neutralizes filter and
+  diff drivers by enumerating the repo config and overriding them via `-c` (L1 config
+  sanitization), proven for the clean-filter vector with a positive control. Full
+  containment of every `.gitattributes`-driven vector for a fully-untrusted repository
+  ultimately relies on running git inside the OS sandbox (deferred / fail-closed on macOS).
 
 ## Deferred (out of scope for the bootstrap)
 
