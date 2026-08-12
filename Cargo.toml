@@ -16,7 +16,7 @@ members = [
 version = "0.0.0"
 edition = "2021"
 rust-version = "1.97"
-license = "LicenseRef-PROPRIETARY-UNRELEASED"
+license = "MIT"
 authors = ["OpenKern"]
 repository = "local-only"
 

@@ -3,13 +3,15 @@
 Honest ledger. `IMPLEMENTED` / `TESTED` / `PROVEN` / `DEFERRED` / `UNSUPPORTED` / `BLOCKED`
 are distinguished; nothing is upgraded for schedule.
 
-## Open
+## Resolved
 
-- **LICENSE_DECISION = PENDING_OWNER_FREEZE.** Manifest carries a placeholder
-  (`LicenseRef-PROPRIETARY-UNRELEASED`). Before any public release: audit project
-  license + dependency licenses + embedded code + third-party assets. Current dependency
-  license surface: **std-only** (zero third-party runtime crates) — `NO_UNKNOWN_LICENSE_DEPENDENCY`
-  holds for the kernel by construction, to be re-audited if a dependency is ever added.
+- **LICENSE_DECISION = MIT (owner, 2026-08-12, mission OPENKERN-BRAND-03-PUBLISH).**
+  Manifest updated to `MIT`; `LICENSE` file added. Dependency audit at publication:
+  `syn`, `proc-macro2`, `quote` — `MIT OR Apache-2.0`; `unicode-ident` —
+  `(MIT OR Apache-2.0) AND Unicode-3.0`. All compatible. `NO_UNKNOWN_LICENSE_DEPENDENCY`
+  holds; re-audit on any new dependency.
+
+## Open
 - **macOS OS-level sandbox: UNSUPPORTED / fail-closed.** The host backend does not provide
   kernel-enforced filesystem/network/pid isolation. Missions requiring those capabilities
   are refused, not run degraded. A real backend (Linux namespaces, macOS `sandbox_init`
