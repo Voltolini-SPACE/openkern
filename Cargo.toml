@@ -1,0 +1,45 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/kern-types",
+    "crates/kern-fsm",
+    "crates/kern-policy",
+    "crates/kern-capability",
+    "crates/kern-repo",
+    "crates/kern-git",
+    "crates/kern-exec",
+    "crates/kern-cli",
+]
+
+[workspace.package]
+version = "0.0.0"
+edition = "2021"
+rust-version = "1.97"
+license = "LicenseRef-PROPRIETARY-UNRELEASED"
+authors = ["OpenKern"]
+repository = "local-only"
+
+# The kernel is std-only by design: zero third-party runtime dependencies in the
+# core crates. This keeps the license/supply-chain surface auditable (see docs/GAPS.md)
+# and removes a whole class of confused-deputy risk from transitive code.
+[workspace.dependencies]
+kern-types = { path = "crates/kern-types" }
+kern-fsm = { path = "crates/kern-fsm" }
+kern-policy = { path = "crates/kern-policy" }
+kern-capability = { path = "crates/kern-capability" }
+kern-repo = { path = "crates/kern-repo" }
+kern-git = { path = "crates/kern-git" }
+kern-exec = { path = "crates/kern-exec" }
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+missing_debug_implementations = "warn"
+
+[workspace.lints.clippy]
+all = { level = "deny", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+module_name_repetitions = "allow"
+must_use_candidate = "allow"
+
+[profile.release]
+opt-level = 2

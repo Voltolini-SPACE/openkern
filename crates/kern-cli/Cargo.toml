@@ -1,0 +1,22 @@
+[package]
+name = "kern-cli"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "kern"
+path = "src/main.rs"
+
+[dependencies]
+kern-types.workspace = true
+kern-fsm.workspace = true
+kern-policy.workspace = true
+kern-capability.workspace = true
+kern-repo.workspace = true
+kern-git.workspace = true
+kern-exec.workspace = true
+
+[lints]
+workspace = true
