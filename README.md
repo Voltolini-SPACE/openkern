@@ -38,7 +38,8 @@ crates/
 ├── kern-repo/        repository identity (worktree / gitdir / HEAD)    (G4)
 ├── kern-git/         governed, transactional Git — the ONLY git caller (G5, G5.1)
 ├── kern-exec/        typed execution runtime + sandbox contract      (G6, G7)
-└── kern-cli/         `kern` binary
+├── kern-context/     governed, deterministic context engine          (G8)
+└── kern-cli/         `kern` binary (version / sandbox / context)
 ```
 
 ## Build & verify

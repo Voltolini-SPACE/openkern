@@ -81,8 +81,8 @@
   .cta-row{display:flex;gap:12px;flex-wrap:wrap;margin-top:28px}
   .btn{font-family:var(--mono);font-size:14px;font-weight:700;padding:13px 22px;border-radius:8px;cursor:pointer;
     text-decoration:none;display:inline-flex;align-items:center;gap:8px;min-height:44px;border:1px solid var(--border-strong)}
-  .btn.primary{background:var(--text);color:var(--bg);border-color:var(--text)}
-  .btn.primary:hover{opacity:.9}
+  .btn-primary{background:var(--text);color:var(--bg);border-color:var(--text)}
+  .btn-primary:hover{opacity:.9}
   .btn.ghost{background:transparent;color:var(--text)}
   .btn.ghost:hover{background:var(--surface-2)}
 
@@ -177,7 +177,7 @@
       <h1>Seus agentes já sabem agir.<br>O OpenKern decide o que eles podem executar.</h1>
       <p class="lead">OpenKern é o kernel de execução governada para agentes de IA. Autoridade explícita, capabilities delimitadas de uso único, execução tipada sem shell e Git transacional por um único ponto de passagem. Se uma ação não foi permitida explicitamente, ela não roda.</p>
       <div class="cta-row">
-        <button class="btn primary" type="button" onclick="document.getElementById('como').scrollIntoView({behavior:'smooth'})">ver como funciona</button>
+        <button class="btn btn-primary" type="button" onclick="document.getElementById('como').scrollIntoView({behavior:'smooth'})">ver como funciona</button>
         <a class="btn ghost" href="#evidencia">ler a evidência</a>
       </div>
 
@@ -269,7 +269,7 @@
       <h2>Dê aos seus agentes poder sem entregar as chaves.</h2>
       <p class="dim">Código aberto, núcleo em Rust sem dependências, apresentação pública em preparação.</p>
       <div class="cta-row">
-        <button class="btn primary" type="button" onclick="document.getElementById('top').scrollIntoView({behavior:'smooth'})">acompanhar o lançamento</button>
+        <button class="btn btn-primary" type="button" onclick="document.getElementById('top').scrollIntoView({behavior:'smooth'})">acompanhar o lançamento</button>
         <a class="btn ghost" href="#evidencia">rever a evidência</a>
       </div>
     </div>

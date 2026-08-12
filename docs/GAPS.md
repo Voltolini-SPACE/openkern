@@ -27,7 +27,29 @@ are distinguished; nothing is upgraded for schedule.
   containment of every `.gitattributes`-driven vector for a fully-untrusted repository
   ultimately relies on running git inside the OS sandbox (deferred / fail-closed on macOS).
 
-## Deferred (out of scope for the bootstrap)
+## Deferred (out of scope)
 
-- G8 Context Engine, TUI, desktop app, cloud, billing, multi-provider routing, plugin
-  marketplace, GitHub remote, public release.
+- TUI, desktop app, cloud, billing, multi-provider routing, plugin marketplace, GitHub
+  remote, public release. (G8 Context Engine is now implemented — see below.)
+
+## G8 Context Engine — deferred / partial (honest)
+
+- **File-source candidates DEFERRED**: the engine scores Rust *symbols* only. Non-`.rs`
+  file candidates (config/docs retrieval) are modeled in the types (`SourceKind::File`) but
+  not yet generated. "Find relevant config" tasks are therefore out of scope this round.
+- **Cache (G8.10) DEFERRED**: no persistent index/graph cache yet. Determinism and
+  content-hash validation are in place, so a cache can be added safely later.
+- **Scale probe (G8.30) PARTIAL**: benchmark runs on a small fixture; dogfood on OpenKern
+  itself indexes 78 files / 671 symbols / 1477 edges in-process, but formal small/medium/
+  large scaling curves (index time, memory, latency) are not yet measured.
+- **Cross-language indexing UNSUPPORTED**: Rust only.
+- **Semantic resolution PARTIAL**: reference/call edges use unique-simple-name resolution;
+  ambiguous names are left unresolved (no invented precision). Full type-aware resolution is
+  future work.
+- **Embedding/model ranking**: not implemented and not required; the kernel ranks with no
+  provider (`MODEL_RANKING = OPTIONAL_ADAPTER`, deferred).
+- **Adversarial A11/A14/A15/A16/A20** (cyclic graph, worktree switch mid-pack, HEAD change
+  mid-pack, cache poisoning, unsupported encoding): not separately tested this round; the
+  freshness + stale-hash + repo-binding defenses cover the substance of A14–A16.
+- **New dependencies**: `syn`, `proc-macro2`, `quote`, `unicode-ident` — all `MIT OR
+  Apache-2.0` (`unicode-ident` also `Unicode-3.0`). `NO_UNKNOWN_LICENSE_DEPENDENCY` holds.

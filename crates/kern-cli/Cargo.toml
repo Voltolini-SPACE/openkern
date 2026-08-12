@@ -17,6 +17,7 @@ kern-capability.workspace = true
 kern-repo.workspace = true
 kern-git.workspace = true
 kern-exec.workspace = true
+kern-context.workspace = true
 
 [lints]
 workspace = true

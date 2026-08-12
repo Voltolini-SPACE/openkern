@@ -15,6 +15,7 @@ name = "kern-cli"
 version = "0.0.0"
 dependencies = [
  "kern-capability",
+ "kern-context",
  "kern-exec",
  "kern-fsm",
  "kern-git",
