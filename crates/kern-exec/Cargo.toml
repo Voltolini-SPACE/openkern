@@ -5,9 +5,22 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 
-[lints]
-workspace = true
-
 [dependencies]
 kern-types.workspace = true
 kern-capability.workspace = true
+
+# kern-exec needs exactly one audited FFI call (`killpg`) to tear down a process group,
+# which safe std does not expose. `unsafe_code` is therefore `deny` (not the workspace
+# `forbid`) so the single use site can be locally allowed and reviewed. Everything else in
+# the crate is safe. See src/lib.rs `ffi` module.
+[lints.rust]
+unsafe_code = "deny"
+missing_debug_implementations = "warn"
+
+[lints.clippy]
+all = { level = "deny", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+module_name_repetitions = "allow"
+must_use_candidate = "allow"
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
