@@ -1,0 +1,9 @@
+<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="OpenKern — OK Monogram">
+  <!-- O: kernel ring -->
+  <circle cx="23" cy="32" r="17" fill="none" stroke="#2E6BFF" stroke-width="6"/>
+  <!-- K: stem + two arms, lower arm is an execution vector -->
+  <line x1="44" y1="12" x2="44" y2="52" stroke="#2E6BFF" stroke-width="6" stroke-linecap="round"/>
+  <line x1="44" y1="32" x2="60" y2="13" stroke="#2E6BFF" stroke-width="6" stroke-linecap="round"/>
+  <line x1="44" y1="32" x2="59.5" y2="50.5" stroke="#2E6BFF" stroke-width="6" stroke-linecap="round"/>
+  <polygon points="62,53 53.6,49.9 60.4,44.1" fill="#2E6BFF"/>
+</svg>

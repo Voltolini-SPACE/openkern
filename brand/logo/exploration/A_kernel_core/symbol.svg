@@ -1,0 +1,7 @@
+<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="OpenKern — Kernel Core">
+  <!-- Gated boundary: rounded-square ring broken by one gate on the right edge -->
+  <path d="M 58 38 L 58 44 A 14 14 0 0 1 44 58 L 20 58 A 14 14 0 0 1 6 44 L 6 20 A 14 14 0 0 1 20 6 L 44 6 A 14 14 0 0 1 58 20 L 58 26"
+        fill="none" stroke="#F0A63C" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Protected core -->
+  <rect x="23" y="23" width="18" height="18" rx="5" fill="#F0A63C"/>
+</svg>

@@ -1,0 +1,9 @@
+<svg width="32" height="32" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="OpenKern favicon 32">
+  <!-- Dedicated small-size redraw: heavier stroke (6/64), tighter geometry -->
+  <g fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 21 14 L 12 14 L 12 50 L 21 50"/>
+    <path d="M 43 14 L 52 14 L 52 50 L 43 50"/>
+    <path d="M 25 24 L 35 32 L 25 40"/>
+  </g>
+  <rect x="39" y="26" width="8" height="13" rx="1.5" fill="currentColor"/>
+</svg>

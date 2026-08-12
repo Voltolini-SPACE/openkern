@@ -1,0 +1,9 @@
+<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="OpenKern symbol E3 Gate">
+  <g fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 24 16 L 16 16 L 16 48 L 24 48"/>
+    <!-- Right bracket with the gate: the single declared opening in the boundary -->
+    <path d="M 40 16 L 48 16 L 48 26"/>
+    <path d="M 48 38 L 48 48 L 40 48"/>
+    <path d="M 27 25 L 36 32 L 27 39"/>
+  </g>
+</svg>

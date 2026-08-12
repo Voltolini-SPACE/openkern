@@ -1,0 +1,8 @@
+<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="OpenKern — Boundary Mono">
+  <!-- Left bracket -->
+  <path d="M 24 16 L 16 16 L 16 48 L 24 48" fill="none" stroke="#161412" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Right bracket -->
+  <path d="M 40 16 L 48 16 L 48 48 L 40 48" fill="none" stroke="#161412" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Caret core: the governed prompt -->
+  <path d="M 28 25 L 37 32 L 28 39" fill="none" stroke="#161412" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

@@ -1,0 +1,465 @@
+<title>OpenKern · Brand Exploration</title>
+<style>
+  :root{
+    --bg:#F4F5F7; --surface:#FFFFFF; --surface-2:#EDEFF3; --border:#DCE0E7;
+    --ink:#12151B; --ink-dim:#454C57; --ink-mute:#727A88;
+    --accent:#C9791A; --accent-ink:#8A5210;
+    --allow:#2F9E5B; --ask:#B9821F; --deny:#C4433A;
+    --shadow:0 1px 2px rgba(16,20,28,.05),0 8px 24px rgba(16,20,28,.06);
+    --mono:ui-monospace,"JetBrains Mono","SF Mono",Menlo,Consolas,monospace;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#0B0E13; --surface:#12161E; --surface-2:#0E1219; --border:#232A35;
+      --ink:#E7ECF3; --ink-dim:#A6AFBD; --ink-mute:#6C7686;
+      --accent:#F0A63C; --accent-ink:#F6BE68;
+      --allow:#5EC27E; --ask:#E0A93C; --deny:#E0655B;
+      --shadow:0 1px 2px rgba(0,0,0,.4),0 12px 32px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="light"]{
+    --bg:#F4F5F7; --surface:#FFFFFF; --surface-2:#EDEFF3; --border:#DCE0E7;
+    --ink:#12151B; --ink-dim:#454C57; --ink-mute:#727A88;
+    --accent:#C9791A; --accent-ink:#8A5210;
+    --allow:#2F9E5B; --ask:#B9821F; --deny:#C4433A;
+    --shadow:0 1px 2px rgba(16,20,28,.05),0 8px 24px rgba(16,20,28,.06);
+  }
+  :root[data-theme="dark"]{
+    --bg:#0B0E13; --surface:#12161E; --surface-2:#0E1219; --border:#232A35;
+    --ink:#E7ECF3; --ink-dim:#A6AFBD; --ink-mute:#6C7686;
+    --accent:#F0A63C; --accent-ink:#F6BE68;
+    --allow:#5EC27E; --ask:#E0A93C; --deny:#E0655B;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 12px 32px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box}
+  body{background:var(--bg);color:var(--ink);font-family:var(--sans);
+    line-height:1.55;-webkit-font-smoothing:antialiased;margin:0}
+  .wrap{max-width:1180px;margin:0 auto;padding:clamp(20px,4vw,52px) clamp(16px,4vw,40px) 72px}
+  .mono{font-family:var(--mono)}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-mute)}
+  h1,h2,h3{text-wrap:balance;margin:0}
+  a{color:inherit}
+
+  /* Masthead */
+  .mast{display:flex;align-items:flex-start;justify-content:space-between;gap:24px;flex-wrap:wrap;
+    padding-bottom:22px;border-bottom:1px solid var(--border)}
+  .brandline{display:flex;align-items:center;gap:14px}
+  .mark{width:40px;height:40px;color:var(--accent);flex:none}
+  .brandname{font-size:22px;font-weight:680;letter-spacing:-.01em}
+  .brandname b{font-weight:780}
+  .brandname .k{color:var(--accent)}
+  .tag{font-family:var(--mono);font-size:12px;color:var(--ink-dim);margin-top:2px}
+  .provenance{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;max-width:520px}
+  .chip{font-family:var(--mono);font-size:11px;padding:5px 9px;border:1px solid var(--border);
+    border-radius:6px;color:var(--ink-dim);background:var(--surface);white-space:nowrap}
+  .chip b{color:var(--ink)}
+  .chip.warn{border-color:color-mix(in srgb,var(--ask) 45%,var(--border))}
+  .chip.warn b{color:var(--ask)}
+
+  .lede{margin:30px 0 8px;font-size:clamp(21px,2.6vw,30px);font-weight:600;letter-spacing:-.015em;line-height:1.22;max-width:22ch}
+  .lede .hl{color:var(--accent)}
+  .subon{color:var(--ink-dim);font-size:15px;max-width:60ch}
+
+  section{margin-top:44px}
+  .sec-h{display:flex;align-items:baseline;gap:12px;margin-bottom:16px}
+  .sec-h .n{font-family:var(--mono);font-size:12px;color:var(--accent)}
+  .sec-h h2{font-size:15px;font-weight:640;letter-spacing:.01em}
+
+  /* Strategy grid */
+  .sgrid{display:grid;grid-template-columns:repeat(12,1fr);gap:14px}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 18px 16px;box-shadow:var(--shadow)}
+  .card .lbl{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-mute);margin-bottom:8px}
+  .col-4{grid-column:span 4}.col-6{grid-column:span 6}.col-8{grid-column:span 8}.col-12{grid-column:span 12}
+  .promise{font-size:17px;font-weight:560;letter-spacing:-.01em;line-height:1.35}
+  .attrs{display:flex;flex-wrap:wrap;gap:8px}
+  .attr{font-family:var(--mono);font-size:12px;padding:6px 10px;border:1px solid var(--border);border-radius:999px;color:var(--ink-dim)}
+  .attr b{color:var(--ink)}
+  .tlist{list-style:none;margin:0;padding:0;display:grid;gap:7px}
+  .tlist li{display:flex;gap:10px;font-size:14px;align-items:baseline}
+  .tlist .role{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-mute);flex:none;width:96px}
+  .tlist .val{color:var(--ink)}
+  .tlist .val.big{font-weight:600}
+
+  /* Direction cards */
+  .dirs{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  .dir{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;box-shadow:var(--shadow);display:flex;flex-direction:column}
+  .dir.rec{border-color:color-mix(in srgb,var(--accent) 55%,var(--border))}
+  .dir-h{display:flex;align-items:center;gap:12px;padding:16px 18px 12px}
+  .dir-key{font-family:var(--mono);font-weight:700;font-size:15px;width:26px;height:26px;display:grid;place-items:center;
+    border:1px solid var(--border);border-radius:7px;color:var(--ink);flex:none}
+  .dir-h .name{font-weight:660;font-size:15.5px;letter-spacing:-.01em}
+  .dir-h .fam{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-mute)}
+  .badge{margin-left:auto;font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+    color:#0B0E13;background:var(--accent);padding:4px 8px;border-radius:6px;font-weight:700;flex:none}
+
+  .grounds{display:grid;grid-template-columns:1.35fr 1fr;gap:0;border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+  .ground{padding:22px 20px;display:flex;align-items:center;gap:16px;min-height:118px}
+  .g-dark{background:var(--gdark,#0A0E14)}
+  .g-light{background:var(--glight,#F5F6F8);border-left:1px solid var(--border)}
+  .lockup{display:flex;align-items:center;gap:13px}
+  .glyph{flex:none;display:block}
+  .wm{font-family:var(--sans);font-weight:520;font-size:20px;letter-spacing:-.01em;line-height:1}
+  .wm b{font-weight:760}
+  .g-dark .wm{color:#E9EDF4}.g-light .wm{color:#14171D}
+  .dir-e .wm{font-family:var(--mono);font-weight:500;font-size:18px}
+  .dir-e .wm b{font-weight:700}
+
+  .ladder{display:flex;align-items:flex-end;gap:14px;padding:14px 20px;background:var(--surface-2);overflow-x:auto}
+  .ladder .step{display:flex;flex-direction:column;align-items:center;gap:6px;flex:none}
+  .ladder .step span{font-family:var(--mono);font-size:9.5px;color:var(--ink-mute)}
+  .ladder .glyph{color:var(--mk)}
+  .body{padding:14px 18px 4px;font-size:13.5px;color:var(--ink-dim);flex:1}
+  .body p{margin:0 0 10px}
+  .palette{display:flex;gap:6px;flex-wrap:wrap;padding:2px 18px 14px}
+  .sw{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10.5px;color:var(--ink-mute)}
+  .sw i{width:14px;height:14px;border-radius:4px;border:1px solid rgba(128,128,128,.35);display:block}
+  .pros{padding:0 18px 16px;display:grid;gap:5px;font-size:12.5px}
+  .pros div{display:flex;gap:8px}
+  .pros .t{font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;flex:none;width:52px;padding-top:2px}
+  .pros .works .t{color:var(--allow)}.pros .risk .t{color:var(--deny)}
+  .pros .c{color:var(--ink-dim)}
+
+  /* States legend + gates */
+  .states{display:flex;gap:16px;flex-wrap:wrap;font-family:var(--mono);font-size:12px}
+  .st{display:flex;align-items:center;gap:7px;color:var(--ink-dim)}
+  .st i{width:9px;height:9px;border-radius:50%}
+  .st.allow i{background:var(--allow)}.st.ask i{background:var(--ask)}.st.deny i{background:var(--deny)}
+
+  .gates{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px}
+  .gate{display:flex;align-items:center;justify-content:space-between;gap:10px;font-family:var(--mono);font-size:12px;
+    padding:9px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface)}
+  .gate .id{color:var(--ink-dim)}
+  .gate .s{font-weight:700;font-size:10.5px;letter-spacing:.06em;padding:2px 7px;border-radius:5px}
+  .s-pass{color:var(--allow);border:1px solid color-mix(in srgb,var(--allow) 40%,transparent)}
+  .s-rev{color:var(--ask);border:1px solid color-mix(in srgb,var(--ask) 40%,transparent)}
+  .s-pend{color:var(--ink-mute);border:1px solid var(--border)}
+
+  .decision{margin-top:44px;background:var(--surface);border:1px solid color-mix(in srgb,var(--accent) 40%,var(--border));
+    border-radius:14px;padding:24px clamp(18px,3vw,28px)}
+  .decision h2{font-size:19px;font-weight:680;letter-spacing:-.01em;margin-bottom:6px}
+  .decision p{color:var(--ink-dim);font-size:14.5px;margin:0 0 14px;max-width:76ch}
+  .asklist{display:grid;gap:10px;margin:0;padding:0;list-style:none}
+  .asklist li{display:flex;gap:12px;align-items:baseline;font-size:14px}
+  .asklist .q{font-family:var(--mono);font-size:11px;color:var(--accent);flex:none;width:30px}
+  .asklist b{color:var(--ink)}
+  .foot{margin-top:34px;padding-top:18px;border-top:1px solid var(--border);
+    font-family:var(--mono);font-size:11px;color:var(--ink-mute);display:flex;flex-wrap:wrap;gap:8px 18px}
+
+  @media(max-width:900px){
+    .dirs{grid-template-columns:1fr}
+    .col-4,.col-6,.col-8{grid-column:span 12}
+    .grounds{grid-template-columns:1fr}
+    .g-light{border-left:none;border-top:1px solid var(--border)}
+    .provenance{justify-content:flex-start;max-width:none}
+  }
+  @media(prefers-reduced-motion:no-preference){
+    .dir{transition:transform .18s ease,border-color .18s ease}
+    .dir:hover{transform:translateY(-2px)}
+  }
+</style>
+
+<!-- Symbol library (currentColor driven; D carries its own gradient) -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <linearGradient id="okD" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#7A5CFF"/><stop offset="1" stop-color="#F0603C"/>
+    </linearGradient>
+  </defs>
+  <symbol id="sym-a" viewBox="0 0 64 64">
+    <path d="M 58 38 L 58 44 A 14 14 0 0 1 44 58 L 20 58 A 14 14 0 0 1 6 44 L 6 20 A 14 14 0 0 1 20 6 L 44 6 A 14 14 0 0 1 58 20 L 58 26" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="23" y="23" width="18" height="18" rx="5" fill="currentColor"/>
+  </symbol>
+  <symbol id="sym-b" viewBox="0 0 64 64">
+    <path d="M 52.78 38 L 52.78 44 L 32 56 L 11.22 44 L 11.22 20 L 32 8 L 52.78 20 L 52.78 26" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="61" y1="32" x2="43" y2="32" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="31" cy="32" r="5" fill="currentColor"/>
+  </symbol>
+  <symbol id="sym-c" viewBox="0 0 64 64">
+    <circle cx="23" cy="32" r="17" fill="none" stroke="currentColor" stroke-width="6"/>
+    <line x1="44" y1="12" x2="44" y2="52" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>
+    <line x1="44" y1="32" x2="60" y2="13" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>
+    <line x1="44" y1="32" x2="59.5" y2="50.5" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>
+    <polygon points="62,53 53.6,49.9 60.4,44.1" fill="currentColor"/>
+  </symbol>
+  <symbol id="sym-d" viewBox="0 0 64 64">
+    <line x1="32" y1="23" x2="32" y2="6" stroke="url(#okD)" stroke-width="4" stroke-linecap="round"/>
+    <line x1="40.56" y1="29.22" x2="57.68" y2="23.66" stroke="url(#okD)" stroke-width="4" stroke-linecap="round"/>
+    <line x1="23.44" y1="29.22" x2="6.32" y2="23.66" stroke="url(#okD)" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="32" cy="6" r="2.6" fill="url(#okD)"/><circle cx="57.68" cy="23.66" r="2.6" fill="url(#okD)"/><circle cx="6.32" cy="23.66" r="2.6" fill="url(#okD)"/>
+    <line x1="37.29" y1="39.28" x2="47.88" y2="53.84" stroke="url(#okD)" stroke-width="4" stroke-linecap="round" stroke-dasharray="3 4"/>
+    <line x1="26.71" y1="39.28" x2="21.42" y2="46.56" stroke="url(#okD)" stroke-width="4" stroke-linecap="round"/>
+    <line x1="16.42" y1="46.64" x2="22.9" y2="51.34" stroke="url(#okD)" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="32" cy="32" r="6" fill="url(#okD)"/>
+  </symbol>
+  <symbol id="sym-e" viewBox="0 0 64 64">
+    <path d="M 24 16 L 16 16 L 16 48 L 24 48" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 40 16 L 48 16 L 48 48 L 40 48" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 28 25 L 37 32 L 28 39" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  </symbol>
+</svg>
+
+<div class="wrap">
+
+  <header class="mast">
+    <div>
+      <div class="brandline">
+        <svg class="mark" viewBox="0 0 64 64" aria-hidden="true"><use href="#sym-a"/></svg>
+        <div>
+          <div class="brandname"><b>Open</b><span class="k">Kern</span></div>
+          <div class="tag">brand exploration · v0 · working draft</div>
+        </div>
+      </div>
+    </div>
+    <div class="provenance">
+      <span class="chip">base <b>d06dddf</b></span>
+      <span class="chip">tag <b>openkern-bootstrap-01</b></span>
+      <span class="chip">crates mutated <b>0</b></span>
+      <span class="chip warn">publication <b>BLOCKED</b></span>
+    </div>
+  </header>
+
+  <h1 class="lede">Governed execution <span class="hl">kernel</span> for AI agents.</h1>
+  <p class="subon">Five identity directions, each proven on dark and light grounds and at small sizes. This panel is the owner review seed for the one decision that unlocks the rest of the system: which mark OpenKern is built on.</p>
+
+  <!-- STRATEGY -->
+  <section>
+    <div class="sec-h"><span class="n">§3–8</span><h2>Strategy in one screen</h2></div>
+    <div class="sgrid">
+      <div class="card col-8">
+        <div class="lbl">Positioning</div>
+        <div class="promise">OpenKern is the governed execution kernel for AI agents: explicit authority, bounded capabilities, typed execution, and evidence over claims.</div>
+      </div>
+      <div class="card col-4">
+        <div class="lbl">Primary promise</div>
+        <div class="promise" style="font-size:15px">Every action passes through explicit, bounded, verifiable authority, or it does not run.</div>
+      </div>
+      <div class="card col-6">
+        <div class="lbl">Attributes</div>
+        <div class="attrs">
+          <span class="attr"><b>Authority</b> explicit</span>
+          <span class="attr"><b>Boundedness</b> scoped</span>
+          <span class="attr"><b>Determinism</b> typed</span>
+          <span class="attr"><b>Verifiability</b> evidence</span>
+          <span class="attr"><b>Restraint</b> fail-closed</span>
+        </div>
+      </div>
+      <div class="card col-6">
+        <div class="lbl">Selected verbal identity</div>
+        <ul class="tlist">
+          <li><span class="role">Primary</span><span class="val big">Governed execution for AI agents.</span></li>
+          <li><span class="role">Secondary</span><span class="val">No implicit authority. No unverified action.</span></li>
+          <li><span class="role">Reserve</span><span class="val">Evidence over claims.</span></li>
+          <li><span class="role">States</span><span class="val mono" style="font-size:12px">ALLOW · ASK · DENY · REFUSED · VERIFIED</span></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- DIRECTIONS -->
+  <section>
+    <div class="sec-h"><span class="n">§9</span><h2>Logo directions</h2>
+      <div class="states" style="margin-left:auto">
+        <span class="st allow"><i></i>allow</span><span class="st ask"><i></i>ask</span><span class="st deny"><i></i>deny</span>
+      </div>
+    </div>
+    <div class="dirs">
+
+      <!-- A -->
+      <article class="dir rec dir-a" style="--gdark:#0A0E14;--glight:#F5F3EE;--mk:#F0A63C">
+        <div class="dir-h"><div class="dir-key">A</div>
+          <div><div class="name">Kernel Core</div><div class="fam">technical · systems</div></div>
+          <span class="badge">Recommended</span></div>
+        <div class="grounds">
+          <div class="ground g-dark"><div class="lockup">
+            <svg class="glyph" style="width:52px;height:52px;color:#F0A63C" viewBox="0 0 64 64"><use href="#sym-a"/></svg>
+            <span class="wm"><b>Open</b>Kern</span></div></div>
+          <div class="ground g-light"><div class="lockup">
+            <svg class="glyph" style="width:40px;height:40px;color:#C9791A" viewBox="0 0 64 64"><use href="#sym-a"/></svg>
+            <span class="wm"><b>Open</b>Kern</span></div></div>
+        </div>
+        <div class="ladder">
+          <div class="step"><svg class="glyph" style="width:16px;height:16px" viewBox="0 0 64 64"><use href="#sym-a"/></svg><span>16</span></div>
+          <div class="step"><svg class="glyph" style="width:24px;height:24px" viewBox="0 0 64 64"><use href="#sym-a"/></svg><span>24</span></div>
+          <div class="step"><svg class="glyph" style="width:32px;height:32px" viewBox="0 0 64 64"><use href="#sym-a"/></svg><span>32</span></div>
+          <div class="step"><svg class="glyph" style="width:48px;height:48px" viewBox="0 0 64 64"><use href="#sym-a"/></svg><span>48</span></div>
+        </div>
+        <div class="body"><p>A protected core inside a boundary broken by exactly one gate: the only way through is an explicit opening. Reads as kernel, isolation, and controlled ingress.</p></div>
+        <div class="palette">
+          <span class="sw"><i style="background:#0A0E14"></i>#0A0E14</span>
+          <span class="sw"><i style="background:#F0A63C"></i>#F0A63C</span>
+          <span class="sw"><i style="background:#EAF0F8"></i>#EAF0F8</span>
+          <span class="sw"><i style="background:#8A97AB"></i>#8A97AB</span>
+        </div>
+        <div class="pros">
+          <div class="works"><span class="t">works</span><span class="c">Holds down to 16px; unmistakable single-color mark; pairs with C as an avatar.</span></div>
+          <div class="risk"><span class="t">risk</span><span class="c">Weak gate can read as a camera aperture; gate must stay assertive.</span></div>
+        </div>
+      </article>
+
+      <!-- C (paired recommendation, placed second for the pairing story) -->
+      <article class="dir dir-c" style="--gdark:#0B0F16;--glight:#F5F6F8;--mk:#4C82FF">
+        <div class="dir-h"><div class="dir-key">C</div>
+          <div><div class="name">OK Monogram</div><div class="fam">developer · neutral</div></div>
+          <span class="badge" style="background:var(--border);color:var(--ink-dim)">Avatar pair</span></div>
+        <div class="grounds">
+          <div class="ground g-dark"><div class="lockup">
+            <svg class="glyph" style="width:52px;height:52px;color:#4C82FF" viewBox="0 0 64 64"><use href="#sym-c"/></svg>
+            <span class="wm"><b>Open</b>Kern</span></div></div>
+          <div class="ground g-light"><div class="lockup">
+            <svg class="glyph" style="width:40px;height:40px;color:#2E6BFF" viewBox="0 0 64 64"><use href="#sym-c"/></svg>
+            <span class="wm"><b>Open</b>Kern</span></div></div>
+        </div>
+        <div class="ladder">
+          <div class="step"><svg class="glyph" style="width:16px;height:16px" viewBox="0 0 64 64"><use href="#sym-c"/></svg><span>16</span></div>
+          <div class="step"><svg class="glyph" style="width:24px;height:24px" viewBox="0 0 64 64"><use href="#sym-c"/></svg><span>24</span></div>
+          <div class="step"><svg class="glyph" style="width:32px;height:32px" viewBox="0 0 64 64"><use href="#sym-c"/></svg><span>32</span></div>
+          <div class="step"><svg class="glyph" style="width:48px;height:48px" viewBox="0 0 64 64"><use href="#sym-c"/></svg><span>48</span></div>
+        </div>
+        <div class="body"><p>O as a kernel ring fused to a K whose lower arm leaves the core as an execution vector. Engineered, literal, and ideal at favicon and avatar scale.</p></div>
+        <div class="palette">
+          <span class="sw"><i style="background:#101418"></i>#101418</span>
+          <span class="sw"><i style="background:#2E6BFF"></i>#2E6BFF</span>
+          <span class="sw"><i style="background:#F7F8FA"></i>#F7F8FA</span>
+          <span class="sw"><i style="background:#5A6472"></i>#5A6472</span>
+        </div>
+        <div class="pros">
+          <div class="works"><span class="t">works</span><span class="c">Best small-size behaviour; obvious O+K; clean on GitHub and app icons.</span></div>
+          <div class="risk"><span class="t">risk</span><span class="c">Monograms are crowded; arc-blue is closer to generic dev-tool blue.</span></div>
+        </div>
+      </article>
+
+      <!-- B -->
+      <article class="dir dir-b" style="--gdark:#0B0B0D;--glight:#F1EEE7;--mk:#C9A35B">
+        <div class="dir-h"><div class="dir-key">B</div>
+          <div><div class="name">Capability Gate</div><div class="fam">premium · authority</div></div></div>
+        <div class="grounds">
+          <div class="ground g-dark"><div class="lockup">
+            <svg class="glyph" style="width:52px;height:52px;color:#C9A35B" viewBox="0 0 64 64"><use href="#sym-b"/></svg>
+            <span class="wm"><b>Open</b>Kern</span></div></div>
+          <div class="ground g-light"><div class="lockup">
+            <svg class="glyph" style="width:40px;height:40px;color:#A6813C" viewBox="0 0 64 64"><use href="#sym-b"/></svg>
+            <span class="wm"><b>Open</b>Kern</span></div></div>
+        </div>
+        <div class="ladder">
+          <div class="step"><svg class="glyph" style="width:16px;height:16px" viewBox="0 0 64 64"><use href="#sym-b"/></svg><span>16</span></div>
+          <div class="step"><svg class="glyph" style="width:24px;height:24px" viewBox="0 0 64 64"><use href="#sym-b"/></svg><span>24</span></div>
+          <div class="step"><svg class="glyph" style="width:32px;height:32px" viewBox="0 0 64 64"><use href="#sym-b"/></svg><span>32</span></div>
+          <div class="step"><svg class="glyph" style="width:48px;height:48px" viewBox="0 0 64 64"><use href="#sym-b"/></svg><span>48</span></div>
+        </div>
+        <div class="body"><p>A seal with a single slot: authority you can see. Nothing passes except through the declared aperture. Premium and institutional for governance contexts.</p></div>
+        <div class="palette">
+          <span class="sw"><i style="background:#0B0B0D"></i>#0B0B0D</span>
+          <span class="sw"><i style="background:#C9A35B"></i>#C9A35B</span>
+          <span class="sw"><i style="background:#F1EEE7"></i>#F1EEE7</span>
+          <span class="sw"><i style="background:#6E6A63"></i>#6E6A63</span>
+        </div>
+        <div class="pros">
+          <div class="works"><span class="t">works</span><span class="c">Distinct authority read; strong in print and enterprise decks.</span></div>
+          <div class="risk"><span class="t">risk</span><span class="c">Brass + hex can drift toward crypto/finance if over-styled.</span></div>
+        </div>
+      </article>
+
+      <!-- D -->
+      <article class="dir dir-d" style="--gdark:#0A0912;--glight:#F3F0FA;--mk:#7A5CFF">
+        <div class="dir-h"><div class="dir-key">D</div>
+          <div><div class="name">Execution Trace</div><div class="fam">high-impact · gradient</div></div></div>
+        <div class="grounds">
+          <div class="ground g-dark"><div class="lockup">
+            <svg class="glyph" style="width:52px;height:52px" viewBox="0 0 64 64"><use href="#sym-d"/></svg>
+            <span class="wm"><b>Open</b>Kern</span></div></div>
+          <div class="ground g-light"><div class="lockup">
+            <svg class="glyph" style="width:40px;height:40px" viewBox="0 0 64 64"><use href="#sym-d"/></svg>
+            <span class="wm"><b>Open</b>Kern</span></div></div>
+        </div>
+        <div class="ladder">
+          <div class="step"><svg class="glyph" style="width:16px;height:16px" viewBox="0 0 64 64"><use href="#sym-d"/></svg><span>16</span></div>
+          <div class="step"><svg class="glyph" style="width:24px;height:24px" viewBox="0 0 64 64"><use href="#sym-d"/></svg><span>24</span></div>
+          <div class="step"><svg class="glyph" style="width:32px;height:32px" viewBox="0 0 64 64"><use href="#sym-d"/></svg><span>32</span></div>
+          <div class="step"><svg class="glyph" style="width:48px;height:48px" viewBox="0 0 64 64"><use href="#sym-d"/></svg><span>48</span></div>
+        </div>
+        <div class="body"><p>A governed nucleus emits paths: solid allow, dashed ask, one severed deny. Governance rendered as controlled radiance. The expressive pole for hero and launch art.</p></div>
+        <div class="palette">
+          <span class="sw"><i style="background:#7A5CFF"></i>#7A5CFF</span>
+          <span class="sw"><i style="background:#F0603C"></i>#F0603C</span>
+          <span class="sw"><i style="background:#0A0912"></i>#0A0912</span>
+          <span class="sw"><i style="background:#F2EEFA"></i>#F2EEFA</span>
+        </div>
+        <div class="pros">
+          <div class="works"><span class="t">works</span><span class="c">Encodes the ALLOW/ASK/DENY story directly; memorable at large size.</span></div>
+          <div class="risk"><span class="t">risk</span><span class="c">Gradient must survive 16px mono and one-color print; against §14 anti-glow.</span></div>
+        </div>
+      </article>
+
+      <!-- E -->
+      <article class="dir dir-e" style="--gdark:#0C0F0E;--glight:#EEF0EE;--mk:#E9EDEA">
+        <div class="dir-h"><div class="dir-key">E</div>
+          <div><div class="name">Boundary Mono</div><div class="fam">minimal · terminal</div></div></div>
+        <div class="grounds">
+          <div class="ground g-dark"><div class="lockup">
+            <svg class="glyph" style="width:52px;height:52px;color:#E9EDEA" viewBox="0 0 64 64"><use href="#sym-e"/></svg>
+            <span class="wm"><b>Open</b>Kern</span></div></div>
+          <div class="ground g-light"><div class="lockup">
+            <svg class="glyph" style="width:40px;height:40px;color:#161412" viewBox="0 0 64 64"><use href="#sym-e"/></svg>
+            <span class="wm"><b>Open</b>Kern</span></div></div>
+        </div>
+        <div class="ladder">
+          <div class="step"><svg class="glyph" style="width:16px;height:16px" viewBox="0 0 64 64"><use href="#sym-e"/></svg><span>16</span></div>
+          <div class="step"><svg class="glyph" style="width:24px;height:24px" viewBox="0 0 64 64"><use href="#sym-e"/></svg><span>24</span></div>
+          <div class="step"><svg class="glyph" style="width:32px;height:32px" viewBox="0 0 64 64"><use href="#sym-e"/></svg><span>32</span></div>
+          <div class="step"><svg class="glyph" style="width:48px;height:48px" viewBox="0 0 64 64"><use href="#sym-e"/></svg><span>48</span></div>
+        </div>
+        <div class="body"><p>One monoline glyph: a boundary bracket around a caret prompt. Kernel edge and terminal in a single stroke. Honest, unix, and quiet by design.</p></div>
+        <div class="palette">
+          <span class="sw"><i style="background:#0C0F0E"></i>#0C0F0E</span>
+          <span class="sw"><i style="background:#E9EDEA"></i>#E9EDEA</span>
+          <span class="sw"><i style="background:#D64541"></i>#D64541</span>
+          <span class="sw"><i style="background:#6C7570"></i>#6C7570</span>
+        </div>
+        <div class="pros">
+          <div class="works"><span class="t">works</span><span class="c">Pure single-weight; perfect for badges, stickers, dotfiles crowd.</span></div>
+          <div class="risk"><span class="t">risk</span><span class="c">Minimalism can read unfinished; needs rigorous grid and spacing.</span></div>
+        </div>
+      </article>
+
+    </div>
+  </section>
+
+  <!-- GATES -->
+  <section>
+    <div class="sec-h"><span class="n">§32</span><h2>Quality gates</h2></div>
+    <div class="gates">
+      <div class="gate"><span class="id">G0 strategy</span><span class="s s-pass">PASS</span></div>
+      <div class="gate"><span class="id">G1 naming</span><span class="s s-pass">PASS</span></div>
+      <div class="gate"><span class="id">G2 verbal</span><span class="s s-pass">PASS</span></div>
+      <div class="gate"><span class="id">G3 logo system</span><span class="s s-rev">IN REVIEW</span></div>
+      <div class="gate"><span class="id">G4 color</span><span class="s s-pend">PENDING</span></div>
+      <div class="gate"><span class="id">G5 typography</span><span class="s s-pend">PENDING</span></div>
+      <div class="gate"><span class="id">G6 visual lang</span><span class="s s-pend">PENDING</span></div>
+      <div class="gate"><span class="id">G7 product UI</span><span class="s s-pend">PENDING</span></div>
+      <div class="gate"><span class="id">G8 github/docs</span><span class="s s-pend">PENDING</span></div>
+      <div class="gate"><span class="id">G9 accessibility</span><span class="s s-pend">PENDING</span></div>
+      <div class="gate"><span class="id">G10 legal</span><span class="s s-pend">PENDING</span></div>
+      <div class="gate"><span class="id">G11 brandbook</span><span class="s s-pend">PENDING</span></div>
+      <div class="gate"><span class="id">G12 freeze</span><span class="s s-pend">OWNER</span></div>
+    </div>
+  </section>
+
+  <!-- DECISION -->
+  <div class="decision">
+    <h2>One decision unlocks the rest</h2>
+    <p>Per the brandbook method and mission §33, the downstream system (color, type, iconography, website, GitHub, brandbook) is built on the chosen mark. Building it on an unapproved logo is the exact waste the process exists to prevent. Pick a direction and the loop continues autonomously from there.</p>
+    <ul class="asklist">
+      <li><span class="q">Q1</span><span>Which direction becomes the primary mark? Default recommendation: <b>A Kernel Core</b> as primary, <b>C OK Monogram</b> as the small-size / avatar partner.</span></li>
+      <li><span class="q">Q2</span><span>Confirm positioning <b>Governed Execution Kernel for AI Agents</b> and primary tagline <b>Governed execution for AI agents.</b></span></li>
+      <li><span class="q">Q3</span><span>Confirm scope order for the build-out: refinement → color → type → icons → brandbook → website (voltolini.space) → GitHub → deck.</span></li>
+    </ul>
+  </div>
+
+  <div class="foot">
+    <span>OPENKERN-BRAND-01</span><span>base d06dddf · openkern-bootstrap-01</span>
+    <span>code mutation 0</span><span>not vault-registered</span><span>no publish · no push</span>
+    <span>EVIDENCE &gt; CLAIMS</span>
+  </div>
+
+</div>

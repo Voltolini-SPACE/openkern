@@ -1,0 +1,10 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="OpenKern avatar">
+  <rect width="512" height="512" rx="96" fill="#0C0F0E"/>
+  <!-- glyph at 75% tile with 12.5% padding: survives circular crop -->
+  <g transform="translate(64,64) scale(6)" fill="none" stroke="#E9EDEA" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 22 16 L 14 16 L 14 48 L 22 48"/>
+    <path d="M 42 16 L 50 16 L 50 48 L 42 48"/>
+    <path d="M 25 25 L 34 32 L 25 39"/>
+  </g>
+  <rect x="292" y="220" width="42" height="72" rx="6" fill="#E9EDEA"/>
+</svg>

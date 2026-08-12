@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>openkern · execução governada para agentes de IA</title>
+<meta name="description" content="OpenKern é o kernel de execução governada para agentes de IA: autoridade explícita, capabilities delimitadas, execução tipada e evidência acima de alegação.">
+<meta name="theme-color" content="#0C0F0E">
+<script>
+  document.documentElement.classList.add('js');
+  (function(){try{
+    var t=localStorage.getItem('openkern-theme');
+    if(!t){t=matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';}
+    document.documentElement.setAttribute('data-theme',t);
+    var m=document.querySelector('meta[name="theme-color"]');
+    if(m)m.setAttribute('content',t==='light'?'#F4F5F4':'#0C0F0E');
+  }catch(e){}})();
+</script>
+<style>
+  :root{
+    --bg:#0C0F0E;--surface:#131715;--surface-2:#1A1F1C;--border:#242B28;--border-strong:#333B37;
+    --text:#E9EDEA;--text-dim:#A8B3AD;--text-mute:#7B877F;
+    --allow:#57B87B;--ask:#D9A03F;--deny:#DE685E;--info:#6FA8C4;
+    --shadow-1:0 1px 2px rgba(0,0,0,.30);--shadow-2:0 8px 24px rgba(0,0,0,.28);
+    --mono:'JetBrains Mono',ui-monospace,'SF Mono',Menlo,Consolas,monospace;
+    --body:Geist,system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+  }
+  @media (prefers-color-scheme:light){
+    :root{--bg:#F4F5F4;--surface:#FFFFFF;--surface-2:#EBEEEC;--border:#D8DDDA;--border-strong:#BFC7C2;
+      --text:#141715;--text-dim:#4A544E;--text-mute:#687269;
+      --allow:#22794A;--ask:#7F630D;--deny:#B03A31;--info:#2E6E8E;
+      --shadow-1:0 1px 2px rgba(16,20,18,.08);--shadow-2:0 8px 24px rgba(16,20,18,.10)}
+  }
+  :root[data-theme="dark"]{--bg:#0C0F0E;--surface:#131715;--surface-2:#1A1F1C;--border:#242B28;--border-strong:#333B37;
+    --text:#E9EDEA;--text-dim:#A8B3AD;--text-mute:#7B877F;
+    --allow:#57B87B;--ask:#D9A03F;--deny:#DE685E;--info:#6FA8C4;
+    --shadow-1:0 1px 2px rgba(0,0,0,.30);--shadow-2:0 8px 24px rgba(0,0,0,.28)}
+  :root[data-theme="light"]{--bg:#F4F5F4;--surface:#FFFFFF;--surface-2:#EBEEEC;--border:#D8DDDA;--border-strong:#BFC7C2;
+    --text:#141715;--text-dim:#4A544E;--text-mute:#687269;
+    --allow:#22794A;--ask:#7F630D;--deny:#B03A31;--info:#2E6E8E;
+    --shadow-1:0 1px 2px rgba(16,20,18,.08);--shadow-2:0 8px 24px rgba(16,20,18,.10)}
+
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{background:var(--bg);color:var(--text);font-family:var(--body);line-height:1.6;-webkit-font-smoothing:antialiased}
+  .mono{font-family:var(--mono)}
+  a{color:var(--info);text-decoration-thickness:1px;text-underline-offset:3px}
+  h1,h2,h3{font-family:var(--mono);line-height:1.25;text-wrap:balance;margin:0 0 14px}
+  h1{font-size:clamp(30px,4.6vw,44px);font-weight:700;letter-spacing:-.01em}
+  h2{font-size:clamp(21px,2.6vw,27px);font-weight:700}
+  h3{font-size:17px;font-weight:700}
+  p{margin:0 0 14px;max-width:68ch}
+  .dim{color:var(--text-dim)} .mute{color:var(--text-mute)}
+  .wrap{max-width:1120px;margin:0 auto;padding:0 clamp(16px,4vw,40px)}
+  section{padding:64px 0;border-top:1px solid var(--border)}
+  .label{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-mute);display:block;margin-bottom:10px}
+
+  /* hub bar (voltolini.space convention) */
+  .hub{font-family:var(--mono);font-size:12px;padding:8px 0;border-bottom:1px solid var(--border);background:var(--surface)}
+  .hub a{color:var(--text-dim);text-decoration:none}
+  .hub a:hover{color:var(--text)}
+
+  /* header / nav */
+  header.site{position:sticky;top:0;z-index:50;background:color-mix(in srgb,var(--bg) 92%,transparent);
+    backdrop-filter:blur(8px);border-bottom:1px solid var(--border)}
+  .navrow{display:flex;align-items:center;gap:20px;padding:14px 0}
+  .brand{display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:17px;color:var(--text);text-decoration:none}
+  .brand b{font-weight:700}
+  .brand svg{width:26px;height:26px;color:var(--text)}
+  nav.main{margin-left:auto;display:flex;gap:18px;flex-wrap:wrap}
+  nav.main a{font-family:var(--mono);font-size:13px;color:var(--text-dim);text-decoration:none}
+  nav.main a:hover{color:var(--text)}
+  .theme-toggle{margin-left:6px;font-family:var(--mono);font-size:12px;padding:7px 12px;border-radius:8px;
+    border:1px solid var(--border-strong);background:var(--surface);color:var(--text);cursor:pointer;min-height:34px}
+  .theme-toggle:hover{border-color:var(--text-mute)}
+
+  /* hero */
+  .hero{padding:84px 0 72px;border-top:none}
+  .hero .glyph{width:64px;height:64px;color:var(--text);margin-bottom:26px}
+  .hero p.lead{font-size:19px;color:var(--text-dim);max-width:58ch}
+  .cta-row{display:flex;gap:12px;flex-wrap:wrap;margin-top:28px}
+  .btn{font-family:var(--mono);font-size:14px;font-weight:700;padding:13px 22px;border-radius:8px;cursor:pointer;
+    text-decoration:none;display:inline-flex;align-items:center;gap:8px;min-height:44px;border:1px solid var(--border-strong)}
+  .btn.primary{background:var(--text);color:var(--bg);border-color:var(--text)}
+  .btn.primary:hover{opacity:.9}
+  .btn.ghost{background:transparent;color:var(--text)}
+  .btn.ghost:hover{background:var(--surface-2)}
+
+  /* terminal demo */
+  .term{margin-top:44px;background:#0C0F0E;border:1px solid var(--border-strong);border-radius:12px;
+    box-shadow:var(--shadow-2);overflow:hidden}
+  :root[data-theme="light"] .term{border-color:#BFC7C2}
+  .term-bar{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid #242B28;
+    font-family:var(--mono);font-size:11px;color:#7B877F}
+  .term-body{padding:18px 18px 20px;font-family:var(--mono);font-size:13.5px;line-height:1.75;color:#E9EDEA;overflow-x:auto}
+  .term-body .c-allow{color:#57B87B}.term-body .c-ask{color:#D9A03F}.term-body .c-deny{color:#DE685E}
+  .term-body .c-dim{color:#7B877F}.term-body .c-ink{color:#E9EDEA}
+  .cursor{display:inline-block;width:8px;height:15px;background:#E9EDEA;vertical-align:-2px}
+  @media (prefers-reduced-motion:no-preference){.cursor{animation:blink 1.1s step-end infinite}@keyframes blink{50%{opacity:0}}}
+
+  /* grids */
+  .grid{display:grid;gap:16px}
+  .g3{grid-template-columns:repeat(3,1fr)} .g2{grid-template-columns:repeat(2,1fr)}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:22px;box-shadow:var(--shadow-1)}
+  .card h3{display:flex;align-items:center;gap:10px}
+  .card h3 svg{width:20px;height:20px;color:var(--text-dim);flex:none}
+  .card p{font-size:14.5px;color:var(--text-dim);margin:0}
+
+  /* states */
+  .stategrid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  .state{border:1px solid var(--border);border-radius:12px;padding:18px;background:var(--surface)}
+  .state .s{font-family:var(--mono);font-weight:700;font-size:15px;display:flex;align-items:center;gap:8px}
+  .state.allow .s{color:var(--allow)} .state.ask .s{color:var(--ask)} .state.deny .s{color:var(--deny)}
+  .state p{font-size:13.5px;color:var(--text-dim);margin:8px 0 0}
+
+  /* evidence strip */
+  .facts{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+  .fact{border:1px solid var(--border);border-radius:12px;padding:18px;background:var(--surface-2)}
+  .fact .n{font-family:var(--mono);font-size:26px;font-weight:700;font-variant-numeric:tabular-nums}
+  .fact .d{font-size:12.5px;color:var(--text-mute);margin-top:4px}
+
+  /* integrations */
+  .contracts{display:flex;flex-wrap:wrap;gap:8px}
+  .contract{font-family:var(--mono);font-size:12.5px;padding:7px 12px;border:1px solid var(--border);border-radius:999px;color:var(--text-dim)}
+
+  footer.site{border-top:1px solid var(--border);padding:36px 0 48px;font-family:var(--mono);font-size:12px;color:var(--text-mute)}
+  footer.site .cols{display:flex;flex-wrap:wrap;gap:10px 26px}
+
+  @media (max-width:900px){
+    .g3,.stategrid{grid-template-columns:1fr 1fr}
+    .facts{grid-template-columns:1fr 1fr}
+    nav.main{gap:14px}
+  }
+  @media (max-width:600px){
+    .g3,.g2,.stategrid,.facts{grid-template-columns:1fr}
+    .cta-row .btn{width:100%;justify-content:center}
+    .navrow{flex-wrap:wrap}
+    nav.main{width:100%;order:3;margin-left:0}
+    section{padding:48px 0}
+    .hero{padding:56px 0 48px}
+  }
+  @media (max-width:400px){
+    h1{font-size:27px}
+    .hero p.lead{font-size:16px}
+    .wrap{padding:0 14px}
+    .term-body{font-size:12px}
+    .btn{padding:12px 16px;font-size:13px}
+  }
+</style>
+</head>
+<body>
+
+<div class="hub"><div class="wrap"><a href="/">&#9700; voltolini.space/openkern</a></div></div>
+
+<header class="site">
+  <div class="wrap navrow">
+    <a class="brand" href="#top" aria-label="openkern">
+      <svg viewBox="0 0 64 64" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M 22 16 L 14 16 L 14 48 L 22 48"/><path d="M 42 16 L 50 16 L 50 48 L 42 48"/><path d="M 25 25 L 34 32 L 25 39"/></g><rect x="38" y="26" width="7" height="12" rx="1" fill="currentColor"/></svg>
+      <span>open<b>kern</b></span>
+    </a>
+    <nav class="main" aria-label="principal">
+      <a href="#porque">por que</a>
+      <a href="#como">como funciona</a>
+      <a href="#estados">estados</a>
+      <a href="#evidencia">evidência</a>
+      <a href="#integra">integrações</a>
+    </nav>
+    <button class="theme-toggle" id="themeToggle" type="button" aria-label="alternar tema">tema: <span id="themeName">auto</span></button>
+  </div>
+</header>
+
+<main id="top">
+
+  <section class="hero">
+    <div class="wrap">
+      <svg class="glyph" viewBox="0 0 64 64" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M 22 16 L 14 16 L 14 48 L 22 48"/><path d="M 42 16 L 50 16 L 50 48 L 42 48"/><path d="M 25 25 L 34 32 L 25 39"/></g><rect x="38" y="26" width="7" height="12" rx="1" fill="currentColor"/></svg>
+      <h1>Seus agentes já sabem agir.<br>O OpenKern decide o que eles podem executar.</h1>
+      <p class="lead">OpenKern é o kernel de execução governada para agentes de IA. Autoridade explícita, capabilities delimitadas de uso único, execução tipada sem shell e Git transacional por um único ponto de passagem. Se uma ação não foi permitida explicitamente, ela não roda.</p>
+      <div class="cta-row">
+        <button class="btn primary" type="button" onclick="document.getElementById('como').scrollIntoView({behavior:'smooth'})">ver como funciona</button>
+        <a class="btn ghost" href="#evidencia">ler a evidência</a>
+      </div>
+
+      <div class="term" role="img" aria-label="demonstração do kern na linha de comando">
+        <div class="term-bar"><span>kern · mission m_4f2</span></div>
+        <div class="term-body"><span class="c-allow">[+] ALLOW</span><span class="c-dim">    policy: fs.read ./src (regra 12, first-match)</span>
+<span class="c-ink">[&gt;] EXECUTED</span><span class="c-dim"> cargo test · exit 0 · 69 passed · evidence ev_9c31</span>
+<span class="c-allow">[=] VERIFIED</span><span class="c-dim"> evidência ev_9c31 confere com a declaração</span>
+<span class="c-ask">[?] ASK</span><span class="c-dim">      net.egress api.github.com:443 aguarda autoridade explícita</span>
+<span class="c-deny">[-] DENY</span><span class="c-dim">     fs.write /etc fora da capability declarada · nada executado</span>
+<span class="c-dim">$</span> <span class="cursor" aria-hidden="true"></span></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="porque">
+    <div class="wrap">
+      <span class="label">por que existe</span>
+      <h2>O poder dos agentes cresceu. A autoridade continuou implícita.</h2>
+      <p class="dim">Agentes de IA hoje executam código, alteram repositórios, chamam ferramentas externas e movem dados com permissões ambientes e confiança de prompt. Quando algo dá errado, sobra um log incompleto e uma alegação. O OpenKern inverte isso: nenhum agente recebe autoridade que não foi concedida de forma explícita, delimitada e verificável.</p>
+      <div class="grid g3" style="margin-top:26px">
+        <div class="card"><h3><svg aria-hidden="true" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M 20 10 L 15 10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="10" cy="12" r="2" fill="currentColor"/></svg>Autoridade explícita</h3><p>Cada ação nomeia quem concedeu, o quê, para qual missão. Autoridade ambiente não existe no kernel.</p></div>
+        <div class="card"><h3><svg aria-hidden="true" viewBox="0 0 24 24"><rect x="4.5" y="4.5" width="15" height="15" rx="2" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="4 3"/><circle cx="12" cy="12" r="2" fill="currentColor"/></svg>Fail-closed</h3><p>Na dúvida, nega. Pré-condição ausente segura a execução em vez de deixar passar.</p></div>
+        <div class="card"><h3><svg aria-hidden="true" viewBox="0 0 24 24"><rect x="5" y="3.5" width="14" height="17" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M 9 8.5 H 15 M 9 12 H 15 M 9 15.5 H 12.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>Evidência acima de alegação</h3><p>O que rodou fica registrado como artefato verificável. O relato do agente nunca é a fonte da verdade.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="como">
+    <div class="wrap">
+      <span class="label">como funciona</span>
+      <h2>Quatro órgãos, um contrato.</h2>
+      <div class="grid g2" style="margin-top:26px">
+        <div class="card"><h3>Policy engine</h3><p>Allow, Ask ou Deny por regra explícita, default-deny, first-match-wins. Política é dado verificável, não convenção de equipe.</p></div>
+        <div class="card"><h3>Capability engine</h3><p>Autoridade delimitada e de uso único. Uma capability concedida vale para uma ação, dentro de um escopo, e se consome no uso.</p></div>
+        <div class="card"><h3>Execução tipada</h3><p>Sem shell arbitrário. Ações são tipos com contrato: entradas declaradas, efeitos previstos, saída com exit code e evidência.</p></div>
+        <div class="card"><h3>Git transacional</h3><p>Toda mutação de repositório passa por um único chokepoint com perfil endurecido, identidade canônica de repo e isolamento por worktree.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="estados">
+    <div class="wrap">
+      <span class="label">vocabulário de estado</span>
+      <h2>O kernel fala em estados, não em promessas.</h2>
+      <div class="stategrid" style="margin-top:26px">
+        <div class="state allow"><span class="s">[+] ALLOW</span><p>Permitido por regra explícita. Prossegue e registra.</p></div>
+        <div class="state ask"><span class="s">[?] ASK</span><p>Suspenso até autoridade humana explícita. Nada roda enquanto espera.</p></div>
+        <div class="state deny"><span class="s">[-] DENY</span><p>Veredito de política. Nenhuma ação executada.</p></div>
+        <div class="state deny"><span class="s">[x] REFUSED</span><p>Recusa de contrato: capability não declarada na negociação.</p></div>
+        <div class="state allow"><span class="s">[=] VERIFIED</span><p>Evidência conferida contra a declaração.</p></div>
+        <div class="state ask"><span class="s">[!] BLOCKED</span><p>Pré-condição ausente. Fail-closed até resolver.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="evidencia">
+    <div class="wrap">
+      <span class="label">evidência, não marketing</span>
+      <h2>O que está provado hoje.</h2>
+      <p class="dim">Números do baseline congelado <span class="mono">openkern-bootstrap-01</span> (commit <span class="mono">d06dddf</span>), reproduzíveis no repositório.</p>
+      <div class="facts" style="margin-top:26px">
+        <div class="fact"><div class="n">8</div><div class="d">crates std-only, zero dependência externa</div></div>
+        <div class="fact"><div class="n">69</div><div class="d">testes no baseline G0 a G7</div></div>
+        <div class="fact"><div class="n">1</div><div class="d">bloco unsafe, auditado e documentado (killpg)</div></div>
+        <div class="fact"><div class="n">0</div><div class="d">ações fora do chokepoint de Git</div></div>
+      </div>
+      <p class="mute" style="margin-top:18px;font-size:13px">O OpenKern não promete segurança absoluta. Ele delimita, nega por padrão e prova o que rodou.</p>
+    </div>
+  </section>
+
+  <section id="integra">
+    <div class="wrap">
+      <span class="label">integração como contrato</span>
+      <h2>Integra sem se subordinar.</h2>
+      <p class="dim">Sistemas externos são tratados como contratos negociados na fronteira do kernel, nunca como confiança implícita. O OpenKern funciona sozinho e compõe com o que você já opera.</p>
+      <div class="contracts" style="margin-top:18px">
+        <span class="contract">LLMs</span><span class="contract">agents</span><span class="contract">MCP</span>
+        <span class="contract">tools</span><span class="contract">runtimes</span><span class="contract">APIs</span>
+        <span class="contract">SDKs</span><span class="contract">webhooks</span><span class="contract">events</span>
+        <span class="contract">NOMOS</span><span class="contract">Hermes</span><span class="contract">OpenClaw</span>
+      </div>
+    </div>
+  </section>
+
+  <section id="cta">
+    <div class="wrap">
+      <span class="label">próximo passo</span>
+      <h2>Dê aos seus agentes poder sem entregar as chaves.</h2>
+      <p class="dim">Código aberto, núcleo em Rust sem dependências, apresentação pública em preparação.</p>
+      <div class="cta-row">
+        <button class="btn primary" type="button" onclick="document.getElementById('top').scrollIntoView({behavior:'smooth'})">acompanhar o lançamento</button>
+        <a class="btn ghost" href="#evidencia">rever a evidência</a>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site">
+  <div class="wrap cols">
+    <span>open<b>kern</b> · governed execution for AI agents</span>
+    <span>ALLOW · ASK · DENY · VERIFIED</span>
+    <span>evidence &gt; claims</span>
+    <span>voltolini.space</span>
+  </div>
+</footer>
+
+<script>
+(function(){try{
+  var btn=document.getElementById('themeToggle'),name=document.getElementById('themeName');
+  var meta=document.querySelector('meta[name="theme-color"]');
+  function label(){name.textContent=document.documentElement.getAttribute('data-theme')||'auto';}
+  btn.addEventListener('click',function(){
+    var cur=document.documentElement.getAttribute('data-theme')||'dark';
+    var nxt=cur==='dark'?'light':'dark';
+    document.documentElement.setAttribute('data-theme',nxt);
+    try{localStorage.setItem('openkern-theme',nxt);}catch(e){}
+    if(meta)meta.setAttribute('content',nxt==='light'?'#F4F5F4':'#0C0F0E');
+    label();
+  });
+  label();
+}catch(e){}})();
+</script>
+
+</body>
+</html>

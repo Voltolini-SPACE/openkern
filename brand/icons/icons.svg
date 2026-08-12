@@ -1,0 +1,94 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="0" height="0" style="position:absolute" aria-hidden="true">
+  <!-- OpenKern icon sprite v1.0-rc · grid 24 · stroke 2 · caps round · currentColor
+       Rules: no fills except state dots/cursor; radius 2; optical padding 3;
+       filled variants are made by swapping stroke->fill on the container shape only. -->
+  <defs>
+    <symbol id="ok-i-capability" viewBox="0 0 24 24">
+      <!-- bounded one-use grant: keycap with a single slot -->
+      <rect x="4" y="5" width="16" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="2"/>
+      <path d="M 20 10 L 15 10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      <circle cx="10" cy="12" r="2" fill="currentColor"/>
+    </symbol>
+    <symbol id="ok-i-policy" viewBox="0 0 24 24">
+      <!-- ordered rules, first-match-wins -->
+      <path d="M 5 6 H 19 M 5 12 H 15 M 5 18 H 11" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      <path d="M 18 10.5 L 21 12 L 18 13.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="ok-i-allow" viewBox="0 0 24 24">
+      <path d="M 5 12.5 L 10 17 L 19 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="ok-i-ask" viewBox="0 0 24 24">
+      <!-- decision node -->
+      <path d="M 12 3.5 L 20.5 12 L 12 20.5 L 3.5 12 Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+      <circle cx="12" cy="12" r="1.8" fill="currentColor"/>
+    </symbol>
+    <symbol id="ok-i-deny" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="2"/>
+      <path d="M 6.5 17.5 L 17.5 6.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="ok-i-repository" viewBox="0 0 24 24">
+      <path d="M 8 4 L 5 4 L 5 20 L 8 20 M 16 4 L 19 4 L 19 20 L 16 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="12" cy="12" r="2.2" fill="currentColor"/>
+    </symbol>
+    <symbol id="ok-i-worktree" viewBox="0 0 24 24">
+      <path d="M 7 4 L 7 20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      <path d="M 7 9 C 12 9 12 6 17 6 M 7 15 C 12 15 12 18 17 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      <circle cx="18.5" cy="6" r="1.8" fill="currentColor"/><circle cx="18.5" cy="18" r="1.8" fill="currentColor"/>
+    </symbol>
+    <symbol id="ok-i-execution" viewBox="0 0 24 24">
+      <path d="M 6 6 L 13 12 L 6 18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M 15 18 H 20" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="ok-i-sandbox" viewBox="0 0 24 24">
+      <rect x="4.5" y="4.5" width="15" height="15" rx="2" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="4 3"/>
+      <circle cx="12" cy="12" r="2" fill="currentColor"/>
+    </symbol>
+    <symbol id="ok-i-audit" viewBox="0 0 24 24">
+      <path d="M 5 5 H 19 M 5 10 H 19 M 5 15 H 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      <path d="M 14 18 L 16.5 20.5 L 21 15.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="ok-i-evidence" viewBox="0 0 24 24">
+      <!-- record with hash marks: the artifact outranks the claim -->
+      <rect x="5" y="3.5" width="14" height="17" rx="2" fill="none" stroke="currentColor" stroke-width="2"/>
+      <path d="M 9 8.5 H 15 M 9 12 H 15 M 9 15.5 H 12.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="ok-i-mission" viewBox="0 0 24 24">
+      <circle cx="6" cy="12" r="2.2" fill="currentColor"/>
+      <path d="M 9 12 H 16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      <path d="M 14 9 L 17.5 12 L 14 15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <rect x="18" y="9.5" width="1.5" height="5" fill="currentColor"/>
+    </symbol>
+    <symbol id="ok-i-agent" viewBox="0 0 24 24">
+      <path d="M 8 5 L 5 5 L 5 19 L 8 19 M 16 5 L 19 5 L 19 19 L 16 19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="12" cy="10" r="2.4" fill="none" stroke="currentColor" stroke-width="2"/>
+      <path d="M 12 12.5 L 12 16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="ok-i-runtime" viewBox="0 0 24 24">
+      <rect x="4.5" y="4.5" width="15" height="15" rx="2" fill="none" stroke="currentColor" stroke-width="2"/>
+      <path d="M 9.5 8.5 L 14.5 12 L 9.5 15.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="ok-i-network" viewBox="0 0 24 24">
+      <circle cx="6" cy="6" r="2.2" fill="none" stroke="currentColor" stroke-width="2"/>
+      <circle cx="18" cy="8" r="2.2" fill="none" stroke="currentColor" stroke-width="2"/>
+      <circle cx="10" cy="18" r="2.2" fill="none" stroke="currentColor" stroke-width="2"/>
+      <path d="M 8 7 L 15.8 7.6 M 7 8 L 9.2 16 M 12 17 L 16.5 9.8" stroke="currentColor" stroke-width="1.6"/>
+    </symbol>
+    <symbol id="ok-i-filesystem" viewBox="0 0 24 24">
+      <path d="M 4 7 A 2 2 0 0 1 6 5 L 10 5 L 12 7.5 L 18 7.5 A 2 2 0 0 1 20 9.5 L 20 17 A 2 2 0 0 1 18 19 L 6 19 A 2 2 0 0 1 4 17 Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="ok-i-terminal" viewBox="0 0 24 24">
+      <rect x="3.5" y="4.5" width="17" height="15" rx="2" fill="none" stroke="currentColor" stroke-width="2"/>
+      <path d="M 7 9 L 10.5 12 L 7 15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M 12.5 15.5 H 16.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="ok-i-security" viewBox="0 0 24 24">
+      <path d="M 12 3.5 L 19 6 L 19 12 C 19 16.5 16 19.5 12 21 C 8 19.5 5 16.5 5 12 L 5 6 Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+      <circle cx="12" cy="11.5" r="1.8" fill="currentColor"/>
+    </symbol>
+    <symbol id="ok-i-refused" viewBox="0 0 24 24">
+      <!-- sandbox refusal: dashed boundary + slash -->
+      <rect x="4.5" y="4.5" width="15" height="15" rx="2" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="4 3"/>
+      <path d="M 8 16 L 16 8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    </symbol>
+  </defs>
+</svg>

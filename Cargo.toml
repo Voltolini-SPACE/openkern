@@ -8,6 +8,7 @@ members = [
     "crates/kern-repo",
     "crates/kern-git",
     "crates/kern-exec",
+    "crates/kern-context",
     "crates/kern-cli",
 ]
 
@@ -30,6 +31,7 @@ kern-capability = { path = "crates/kern-capability" }
 kern-repo = { path = "crates/kern-repo" }
 kern-git = { path = "crates/kern-git" }
 kern-exec = { path = "crates/kern-exec" }
+kern-context = { path = "crates/kern-context" }
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

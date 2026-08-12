@@ -1,0 +1,11 @@
+<svg width="160" height="112" viewBox="0 0 160 112" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="openkern vertical lockup">
+  <g transform="translate(48,0)">
+    <g fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 22 16 L 14 16 L 14 48 L 22 48"/>
+      <path d="M 42 16 L 50 16 L 50 48 L 42 48"/>
+      <path d="M 25 25 L 34 32 L 25 39"/>
+    </g>
+    <rect x="38" y="26" width="7" height="12" rx="1" fill="currentColor"/>
+  </g>
+  <text x="80" y="92" text-anchor="middle" font-family="'JetBrains Mono',ui-monospace,'SF Mono',Menlo,Consolas,monospace" font-size="22" fill="currentColor"><tspan font-weight="400">open</tspan><tspan font-weight="700">kern</tspan></text>
+</svg>

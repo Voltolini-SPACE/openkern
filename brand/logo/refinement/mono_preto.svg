@@ -1,0 +1,8 @@
+<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="OpenKern symbol, monochrome black">
+  <g fill="none" stroke="#141715" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 22 16 L 14 16 L 14 48 L 22 48"/>
+    <path d="M 42 16 L 50 16 L 50 48 L 42 48"/>
+    <path d="M 25 25 L 34 32 L 25 39"/>
+  </g>
+  <rect x="38" y="26" width="7" height="12" rx="1" fill="#141715"/>
+</svg>

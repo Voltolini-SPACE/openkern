@@ -1,0 +1,58 @@
+/* OpenKern design tokens v1.0-rc — generated companion to tokens.json.
+   Dark is canonical; light is first-class. Toggle stamps data-theme on :root. */
+:root{
+  --ok-bg:#F4F5F4; --ok-surface:#FFFFFF; --ok-surface-2:#EBEEEC;
+  --ok-border:#D8DDDA; --ok-border-strong:#BFC7C2;
+  --ok-text:#141715; --ok-text-dim:#4A544E; --ok-text-mute:#687269;
+  --ok-allow:#22794A; --ok-ask:#7F630D; --ok-deny:#B03A31; --ok-info:#2E6E8E;
+
+  --ok-font-mono:'JetBrains Mono',ui-monospace,'SF Mono',Menlo,Consolas,monospace;
+  --ok-font-body:Geist,system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+
+  --ok-space-1:4px; --ok-space-2:8px; --ok-space-3:12px; --ok-space-4:16px;
+  --ok-space-5:24px; --ok-space-6:32px; --ok-space-7:48px; --ok-space-8:64px;
+
+  --ok-radius-s:4px; --ok-radius-m:8px; --ok-radius-l:12px;
+  --ok-hairline:1px; --ok-emphasis:2px;
+
+  --ok-shadow-1:0 1px 2px rgba(16,20,18,.08);
+  --ok-shadow-2:0 8px 24px rgba(16,20,18,.10);
+
+  --ok-dur-fast:120ms; --ok-dur-base:180ms; --ok-dur-slow:240ms;
+  --ok-ease:cubic-bezier(.2,0,0,1);
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --ok-bg:#0C0F0E; --ok-surface:#131715; --ok-surface-2:#1A1F1C;
+    --ok-border:#242B28; --ok-border-strong:#333B37;
+    --ok-text:#E9EDEA; --ok-text-dim:#A8B3AD; --ok-text-mute:#7B877F;
+    --ok-allow:#57B87B; --ok-ask:#D9A03F; --ok-deny:#DE685E; --ok-info:#6FA8C4;
+    --ok-shadow-1:0 1px 2px rgba(0,0,0,.30);
+    --ok-shadow-2:0 8px 24px rgba(0,0,0,.28);
+  }
+}
+:root[data-theme="light"]{
+  --ok-bg:#F4F5F4; --ok-surface:#FFFFFF; --ok-surface-2:#EBEEEC;
+  --ok-border:#D8DDDA; --ok-border-strong:#BFC7C2;
+  --ok-text:#141715; --ok-text-dim:#4A544E; --ok-text-mute:#687269;
+  --ok-allow:#22794A; --ok-ask:#7F630D; --ok-deny:#B03A31; --ok-info:#2E6E8E;
+  --ok-shadow-1:0 1px 2px rgba(16,20,18,.08);
+  --ok-shadow-2:0 8px 24px rgba(16,20,18,.10);
+}
+:root[data-theme="dark"]{
+  --ok-bg:#0C0F0E; --ok-surface:#131715; --ok-surface-2:#1A1F1C;
+  --ok-border:#242B28; --ok-border-strong:#333B37;
+  --ok-text:#E9EDEA; --ok-text-dim:#A8B3AD; --ok-text-mute:#7B877F;
+  --ok-allow:#57B87B; --ok-ask:#D9A03F; --ok-deny:#DE685E; --ok-info:#6FA8C4;
+  --ok-shadow-1:0 1px 2px rgba(0,0,0,.30);
+  --ok-shadow-2:0 8px 24px rgba(0,0,0,.28);
+}
+
+/* Signature motion: the prompt cursor. The only element that blinks. */
+@media (prefers-reduced-motion:no-preference){
+  .ok-cursor{animation:ok-blink 1.1s step-end infinite}
+  @keyframes ok-blink{50%{opacity:0}}
+}
+
+/* Focus: achromatic, theme-proof */
+:focus-visible{outline:var(--ok-emphasis) solid var(--ok-text);outline-offset:2px}

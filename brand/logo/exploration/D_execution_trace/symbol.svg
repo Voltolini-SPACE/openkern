@@ -1,0 +1,22 @@
+<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="OpenKern — Execution Trace">
+  <defs>
+    <linearGradient id="okD" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#7A5CFF"/>
+      <stop offset="1" stop-color="#F0603C"/>
+    </linearGradient>
+  </defs>
+  <!-- ALLOW rays (solid) -->
+  <line x1="32" y1="23" x2="32" y2="6"  stroke="url(#okD)" stroke-width="4" stroke-linecap="round"/>
+  <line x1="40.56" y1="29.22" x2="57.68" y2="23.66" stroke="url(#okD)" stroke-width="4" stroke-linecap="round"/>
+  <line x1="23.44" y1="29.22" x2="6.32" y2="23.66" stroke="url(#okD)" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="32" cy="6" r="2.6" fill="url(#okD)"/>
+  <circle cx="57.68" cy="23.66" r="2.6" fill="url(#okD)"/>
+  <circle cx="6.32" cy="23.66" r="2.6" fill="url(#okD)"/>
+  <!-- ASK ray (dashed) -->
+  <line x1="37.29" y1="39.28" x2="47.88" y2="53.84" stroke="url(#okD)" stroke-width="4" stroke-linecap="round" stroke-dasharray="3 4"/>
+  <!-- DENY ray (severed + cut mark) -->
+  <line x1="26.71" y1="39.28" x2="21.42" y2="46.56" stroke="url(#okD)" stroke-width="4" stroke-linecap="round"/>
+  <line x1="16.42" y1="46.64" x2="22.9" y2="51.34" stroke="url(#okD)" stroke-width="3" stroke-linecap="round"/>
+  <!-- Governed core -->
+  <circle cx="32" cy="32" r="6" fill="url(#okD)"/>
+</svg>
