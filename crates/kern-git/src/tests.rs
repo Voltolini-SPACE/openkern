@@ -287,6 +287,55 @@ fn hostile_global_config_is_ignored_with_positive_control() {
     assert!(denied.stdout.trim().is_empty());
 }
 
+#[test]
+fn linked_worktrees_are_isolated() {
+    let t = TempDir::new();
+    let repo = t.path().join("repo");
+    let runner = GitRunner::new();
+    let id = init_repo(&runner, &repo);
+
+    // Need an initial commit before a linked worktree can be added.
+    let grant = grant_for(&id, ALL_OPS);
+    let mut main_txn = GitTransaction::begin(runner.clone(), id, grant).unwrap();
+    fs::write(repo.join("base.txt"), "base\n").unwrap();
+    main_txn.add(&["base.txt"], now()).unwrap();
+    let main_head_before = main_txn.commit("base", now()).unwrap();
+
+    // Add a linked worktree on its own branch.
+    let wt_path = t.path().join("wt-feature");
+    runner
+        .worktree_add(&repo, wt_path.to_str().unwrap(), "feature", &repo)
+        .unwrap();
+
+    let main_id = ident(&repo);
+    let wt_id = ident(&wt_path);
+    assert!(
+        main_id.same_repository(&wt_id),
+        "linked worktree shares the repository"
+    );
+    assert_ne!(
+        main_id.worktree_id(),
+        wt_id.worktree_id(),
+        "distinct worktrees"
+    );
+
+    // Mutate inside the linked worktree via its own transaction.
+    let wt_grant = grant_for(&wt_id, ALL_OPS);
+    let wt_ident = ident(&wt_path);
+    let mut wt_txn = GitTransaction::begin(runner.clone(), wt_ident, wt_grant).unwrap();
+    fs::write(wt_path.join("feat.txt"), "feature\n").unwrap();
+    wt_txn.add(&["feat.txt"], now()).unwrap();
+    let feature_head = wt_txn.commit("feature commit", now()).unwrap();
+    assert_ne!(feature_head, main_head_before);
+
+    // The main worktree's HEAD (branch `main`) is unaffected by the feature commit.
+    let main_head_after = runner.current_head(&repo, &repo).unwrap();
+    assert_eq!(
+        main_head_after, main_head_before,
+        "main worktree HEAD isolated from linked-worktree commit"
+    );
+}
+
 /// Structural invariant: exactly one `git` spawn site in the whole workspace, and zero
 /// raw shell spawns. The needle is assembled at runtime so this test's own source is not a
 /// match.

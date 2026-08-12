@@ -210,6 +210,23 @@ impl GitRunner {
         )?;
         Ok(out.stdout.lines().map(str::to_string).collect())
     }
+
+    /// Add a linked worktree at `new_path` on a fresh `branch` (`git worktree add -b`).
+    pub fn worktree_add(
+        &self,
+        cwd: &Path,
+        new_path: &str,
+        branch: &str,
+        home: &Path,
+    ) -> Result<(), GitError> {
+        self.run_checked(
+            &["worktree", "add", "-b", branch, new_path],
+            cwd,
+            &GitExecutionProfile::hardened(),
+            home,
+        )?;
+        Ok(())
+    }
 }
 
 /// A hardened `HEAD` expectation carried by a transaction.

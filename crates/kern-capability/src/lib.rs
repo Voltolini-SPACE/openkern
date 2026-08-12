@@ -487,4 +487,21 @@ mod tests {
         );
         assert_eq!(g.uses_remaining(), 1);
     }
+
+    #[test]
+    fn worktree_binding_denies_other_worktree() {
+        let mut spec = base_spec();
+        spec.worktree = Some(WorktreeId::new("wt-a").unwrap());
+        let mut g = Capability::new(spec).grant(10);
+
+        // request against the bound worktree -> ok
+        let mut ok = base_req();
+        ok.worktree = Some(WorktreeId::new("wt-a").unwrap());
+        assert!(g.authorize(&ok, T0).is_ok());
+
+        // request against a different worktree -> denied
+        let mut bad = base_req();
+        bad.worktree = Some(WorktreeId::new("wt-b").unwrap());
+        assert_eq!(g.authorize(&bad, T0), Err(Denied::WrongWorktree));
+    }
 }
