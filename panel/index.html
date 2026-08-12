@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>openkern · panel</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2064%2064'%3E%3Crect%20width='64'%20height='64'%20rx='12'%20fill='%230C0F0E'/%3E%3Cg%20fill='none'%20stroke='%23E9EDEA'%20stroke-width='6'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Cpath%20d='M%2014%2018%20L%2032%2032%20L%2014%2046'/%3E%3C/g%3E%3Crect%20x='40'%20y='24'%20width='12'%20height='19'%20rx='2'%20fill='%23E9EDEA'/%3E%3C/svg%3E">
+<script>
+  document.documentElement.classList.add('js');
+  (function(){try{
+    var t=localStorage.getItem('openkern-panel-theme');
+    if(t)document.documentElement.setAttribute('data-theme',t);
+  }catch(e){}})();
+</script>
+<style>
+  :root, :root[data-theme="dark"]{
+    --bg:#0C0F0E;--surface:#131715;--surface-2:#1A1F1C;--border:#242B28;--border-strong:#333B37;
+    --text:#E9EDEA;--text-dim:#A8B3AD;--text-mute:#7B877F;
+    --allow:#57B87B;--ask:#D9A03F;--deny:#DE685E;--info:#6FA8C4;
+  }
+  :root[data-theme="light"]{
+    --bg:#F4F5F4;--surface:#FFFFFF;--surface-2:#EBEEEC;--border:#D8DDDA;--border-strong:#BFC7C2;
+    --text:#141715;--text-dim:#4A544E;--text-mute:#687269;
+    --allow:#22794A;--ask:#7F630D;--deny:#B03A31;--info:#2E6E8E;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);
+    font:14px/1.55 'JetBrains Mono',ui-monospace,'SF Mono',Menlo,Consolas,monospace;
+    -webkit-font-smoothing:antialiased}
+  header{display:flex;align-items:center;gap:12px;padding:14px 20px;
+    border-bottom:1px solid var(--border);background:var(--surface);position:sticky;top:0}
+  header svg{width:26px;height:26px;color:var(--text);flex:none}
+  header .name{font-size:16px}
+  header .name b{font-weight:700}
+  header .tag{color:var(--text-mute);font-size:11px;margin-left:4px}
+  #health{margin-left:auto;font-size:12px;color:var(--text-mute)}
+  #health b{font-weight:700}
+  .ok b{color:var(--allow)} .bad b{color:var(--deny)}
+  #themeToggle{font:inherit;font-size:11px;padding:6px 10px;border-radius:7px;cursor:pointer;
+    border:1px solid var(--border-strong);background:var(--surface-2);color:var(--text)}
+
+  main{max-width:1060px;margin:0 auto;padding:22px 20px 60px;display:grid;gap:18px}
+  .panel{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px}
+  .panel h2{margin:0 0 12px;font-size:12px;font-weight:700;letter-spacing:.12em;
+    text-transform:uppercase;color:var(--text-mute)}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  input[type=text]{flex:1;min-width:220px;font:inherit;padding:10px 12px;border-radius:8px;
+    border:1px solid var(--border-strong);background:var(--bg);color:var(--text)}
+  input[type=text]:focus-visible{outline:2px solid var(--text);outline-offset:2px}
+  button.op{font:inherit;font-size:13px;font-weight:700;padding:10px 16px;border-radius:8px;
+    cursor:pointer;border:1px solid var(--border-strong);background:var(--surface-2);color:var(--text);min-height:40px}
+  button.op:hover{border-color:var(--text-mute)}
+  button.op.primary{background:var(--text);color:var(--bg);border-color:var(--text)}
+  button.op:disabled{opacity:.45;cursor:wait}
+  button.op:focus-visible{outline:2px solid var(--text);outline-offset:2px}
+  .hint{font-size:11.5px;color:var(--text-mute);margin-top:8px}
+
+  #console{background:#0C0F0E;border:1px solid var(--border-strong);border-radius:12px;
+    padding:16px 18px;min-height:220px;max-height:52vh;overflow:auto;
+    white-space:pre-wrap;word-break:break-word;color:#E9EDEA}
+  :root[data-theme="light"] #console{box-shadow:0 1px 2px rgba(16,20,18,.08)}
+  .s-allow{color:#57B87B;font-weight:700}.s-ask{color:#D9A03F;font-weight:700}
+  .s-deny{color:#DE685E;font-weight:700}.s-info{color:#6FA8C4;font-weight:700}
+  .s-dim{color:#7B877F}
+  .cursor{display:inline-block;width:8px;height:14px;background:#E9EDEA;vertical-align:-2px}
+  @media (prefers-reduced-motion:no-preference){
+    .cursor{animation:blink 1.1s step-end infinite}@keyframes blink{50%{opacity:0}}}
+  @media (max-width:600px){header .tag{display:none}}
+</style>
+</head>
+<body>
+
+<header>
+  <svg viewBox="0 0 64 64" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M 22 16 L 14 16 L 14 48 L 22 48"/><path d="M 42 16 L 50 16 L 50 48 L 42 48"/><path d="M 25 25 L 34 32 L 25 39"/></g><rect x="38" y="26" width="7" height="12" rx="1" fill="currentColor"/></svg>
+  <span class="name">open<b>kern</b> <span class="tag">panel · local · 127.0.0.1</span></span>
+  <span id="health">verificando kern <span class="cursor" aria-hidden="true"></span></span>
+  <button id="themeToggle" type="button" aria-label="alternar tema">tema</button>
+</header>
+
+<main>
+  <section class="panel" aria-labelledby="t-kernel">
+    <h2 id="t-kernel">kernel</h2>
+    <div class="row">
+      <button class="op" id="btnVersion" type="button">version</button>
+      <button class="op" id="btnSandbox" type="button">sandbox</button>
+    </div>
+    <p class="hint">Comandos rodam no binário kern real, como subprocess tipado (sem shell), ambiente mínimo, timeout.</p>
+  </section>
+
+  <section class="panel" aria-labelledby="t-context">
+    <h2 id="t-context">context engine (G8)</h2>
+    <div class="row">
+      <input type="text" id="path" placeholder="caminho do repositório (ex.: /Users/AI/Projects/openkern)" autocomplete="off">
+    </div>
+    <div class="row" style="margin-top:10px">
+      <input type="text" id="query" placeholder="consulta (para query e explain)" autocomplete="off">
+    </div>
+    <div class="row" style="margin-top:10px">
+      <button class="op" id="btnIndex" type="button">index</button>
+      <button class="op" id="btnStats" type="button">stats</button>
+      <button class="op primary" id="btnQuery" type="button">query</button>
+      <button class="op" id="btnExplain" type="button">explain</button>
+    </div>
+    <p class="hint">index constrói o índice determinístico do repositório · stats mostra o estado · query retorna o pack de contexto (JSON) · explain justifica a seleção.</p>
+  </section>
+
+  <section class="panel" aria-labelledby="t-console">
+    <h2 id="t-console">console</h2>
+    <div id="console" role="log" aria-live="polite"><span class="s-dim">$ pronto. nada foi executado ainda.</span> <span class="cursor" aria-hidden="true"></span></div>
+  </section>
+</main>
+
+<script>
+(function(){try{
+  var $=function(id){return document.getElementById(id)};
+  var out=$('console');
+
+  $('themeToggle').addEventListener('click',function(){
+    var cur=document.documentElement.getAttribute('data-theme')||'dark';
+    var nxt=cur==='dark'?'light':'dark';
+    document.documentElement.setAttribute('data-theme',nxt);
+    try{localStorage.setItem('openkern-panel-theme',nxt);}catch(e){}
+  });
+
+  function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;');}
+  function stateSpan(st){
+    var map={EXECUTED:['s-allow','[>]'],ALLOW:['s-allow','[+]'],VERIFIED:['s-allow','[=]'],
+             ASK:['s-ask','[?]'],BLOCKED:['s-ask','[!]'],DENY:['s-deny','[-]'],REFUSED:['s-deny','[x]']};
+    var m=map[st]||['s-info','[i]'];
+    return '<span class="'+m[0]+'">'+m[1]+' '+esc(st)+'</span>';
+  }
+  function log(html){
+    out.innerHTML+='\n'+html;
+    out.scrollTop=out.scrollHeight;
+  }
+  function render(r){
+    var head=stateSpan(r.state)+' <span class="s-dim">'+esc((r.argv||[]).join(' '))+
+      (r.ms!=null?' · '+r.ms+'ms':'')+(r.rc!=null?' · rc='+r.rc:'')+'</span>';
+    log(head);
+    if(r.stdout){
+      var s=r.stdout.trim();
+      try{ s=JSON.stringify(JSON.parse(s),null,2); }catch(e){}
+      if(s.length>12000) s=s.slice(0,12000)+'\n… (truncado no painel; saída completa via CLI)';
+      log(esc(s));
+    }
+    if(r.stderr&&r.stderr.trim()) log('<span class="s-deny">'+esc(r.stderr.trim())+'</span>');
+  }
+  function busy(b){
+    document.querySelectorAll('button.op').forEach(function(x){x.disabled=b;});
+  }
+  function call(method,url,body){
+    busy(true);
+    return fetch(url,{method:method,headers:{'Content-Type':'application/json'},
+      body:body?JSON.stringify(body):undefined})
+      .then(function(r){return r.json()}).then(render)
+      .catch(function(e){log('<span class="s-deny">[x] FALHA '+esc(e.message)+'</span>')})
+      .finally(function(){busy(false)});
+  }
+
+  $('btnVersion').onclick=function(){
+    busy(true);
+    fetch('/api/health').then(function(r){return r.json()}).then(function(h){
+      log(stateSpan(h.ok?'VERIFIED':'BLOCKED')+' <span class="s-dim">kern '+esc(h.version||'ausente')+' · '+esc(h.kern||'binario nao encontrado')+'</span>');
+    }).catch(function(e){log('<span class="s-deny">[x] FALHA '+esc(e.message)+'</span>')})
+      .finally(function(){busy(false)});
+  };
+  $('btnSandbox').onclick=function(){call('GET','/api/sandbox');};
+  function ctx(op){
+    var p=$('path').value.trim(), q=$('query').value.trim();
+    call('POST','/api/context/'+op,{path:p,text:q});
+  }
+  $('btnIndex').onclick=function(){ctx('index')};
+  $('btnStats').onclick=function(){ctx('stats')};
+  $('btnQuery').onclick=function(){ctx('query')};
+  $('btnExplain').onclick=function(){ctx('explain')};
+  $('query').addEventListener('keydown',function(e){if(e.key==='Enter')ctx('query');});
+
+  fetch('/api/health').then(function(r){return r.json()}).then(function(h){
+    var el=$('health');
+    el.className=h.ok?'ok':'bad';
+    el.innerHTML=h.ok?('<b>[=] '+esc(h.version)+'</b>'):'<b>[!] kern indisponível</b>';
+    if(h.repo&&!$('path').value)$('path').value=h.repo;
+  }).catch(function(){var el=$('health');el.className='bad';el.innerHTML='<b>[x] servidor sem resposta</b>';});
+}catch(e){/* painel nunca quebra a página */}})();
+</script>
+</body>
+</html>
