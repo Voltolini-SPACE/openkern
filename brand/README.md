@@ -1,7 +1,8 @@
 # brand/ — OpenKern Brand System
 
 Fonte dos ativos de marca OpenKern. Regido por `docs/BRAND_BOOK.md`.
-Versão: **1.0-rc** (freeze pendente de aprovação do owner · missão OPENKERN-BRAND-01).
+Versão: **1.0 CONGELADA** (tag `openkern-brand-v1.0` · símbolo primário **E2 Prompt [>▮]**
+· tagline "Governed execution for AI agents." · freeze: `docs/BRAND_FREEZE_v1.0.md`).
 
 ```
 brand/

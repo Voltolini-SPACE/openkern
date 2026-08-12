@@ -1,11 +1,14 @@
 # OpenKern Brand Book
 
 ```
-BRAND_VERSION      : 1.0-rc (aguardando aprovação do owner para freeze)
-BASE_PRODUCT       : openkern-bootstrap-01 · commit d06dddf
-MISSION            : OPENKERN-BRAND-01
-SOURCE_OF_TRUTH    : este arquivo + brand/ neste repositório
-PUBLICATION        : PROHIBITED_UNTIL_OWNER_APPROVAL
+BRAND_VERSION      : 1.0 (CONGELADA · missão OPENKERN-BRAND-02-FREEZE · 2026-08-12)
+SYMBOL_PRIMARY     : E2 Prompt [>▮] (decisão do owner)
+TAGLINE            : Governed execution for AI agents. (decisão do owner)
+BASE_PRODUCT       : openkern-bootstrap-01 · commit d06dddf (G8 posterior: f2d3b8f)
+MISSION            : OPENKERN-BRAND-01 → OPENKERN-BRAND-02-FREEZE
+SOURCE_OF_TRUTH    : este arquivo + brand/ neste repositório (tag openkern-brand-v1.0)
+FREEZE_RECORD      : docs/BRAND_FREEZE_v1.0.md (forense de genealogia incluída)
+PUBLICATION        : NOT_PUBLISHED (missão de publicação separada: BRAND-03)
 ```
 
 ---
@@ -79,10 +82,11 @@ Direção aprovada pelo owner (12/08/2026): **E · Boundary Mono**. Um glifo mon
 colchetes de fronteira em volta de um caret de prompt. Kernel boundary e terminal
 no mesmo traço.
 
-Variações (Etapa 5, escolha do owner pendente):
-- **E1 Pure** `[ > ]` — a mais quieta (impresso, contextos formais)
-- **E2 Prompt** `[ >▮]` — com cursor de bloco (recomendada como primária)
-- **E3 Gate** — bracket direito com abertura única (narrativa de capability)
+Variações (Etapa 5 CONCLUÍDA — decisão do owner em 12/08/2026):
+- **E2 Prompt** `[ >▮]` — **SÍMBOLO PRIMÁRIO** (com cursor de bloco; carrega o
+  único motion sancionado, o blink)
+- **E1 Pure** `[ > ]` — variante secundária "quiet" (impresso, contextos formais)
+- **E3 Gate** — variante narrativa (diagramas de capability boundary apenas)
 
 Lockups: horizontal (`lockup_horizontal.svg`), vertical (`lockup_vertical.svg`),
 símbolo isolado, wordmark isolado, mono preto, mono branco.

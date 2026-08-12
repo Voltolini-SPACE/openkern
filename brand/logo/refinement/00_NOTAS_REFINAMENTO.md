@@ -27,12 +27,13 @@
 6. **Legibilidade pequena:** testado no painel a 16/24/32/48 px; brackets permanecem
    legíveis porque o glifo é 100% monoline sem detalhe interno fino.
 
-## Recomendação
+## Decisão (Etapa 5 — owner, 12/08/2026)
 
-**E2 Prompt** como símbolo primário: o cursor de bloco dá massa ao glifo em tamanhos
-pequenos (favicon/avatar) e carrega o único motion sancionado da marca (blink).
-E1 fica como variante "quiet" para contextos impressos; E3 como variante narrativa
-para diagramas de fronteira.
+**E2 Prompt = SÍMBOLO PRIMÁRIO** (aprovado na missão OPENKERN-BRAND-02-FREEZE):
+o cursor de bloco dá massa ao glifo em tamanhos pequenos (favicon/avatar) e carrega
+o único motion sancionado da marca (blink). E1 é a variante "quiet" para contextos
+impressos; E3 a variante narrativa para diagramas de fronteira. Paleta e tagline
+("Governed execution for AI agents.") aprovadas na mesma decisão.
 
 ## Riscos residuais
 
