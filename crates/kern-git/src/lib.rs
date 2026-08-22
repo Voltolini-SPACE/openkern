@@ -565,6 +565,13 @@ fn hardening_args(profile: &GitExecutionProfile, cwd: &Path) -> Result<Vec<Strin
     if !profile.allow_remote {
         push("core.sshCommand", "");
     }
+    if !profile.allow_external_diff {
+        // `diff.external` is a *top-level* key, not a `[diff "name"]` subsection, so the
+        // subsection scan below structurally cannot reach it. Blanking it unconditionally
+        // — like `core.hooksPath` — also keeps it outside the enumeration blind spots that
+        // `[include]` and `extensions.worktreeConfig` create.
+        push("diff.external", "");
+    }
 
     let needs_filters = !profile.allow_filters;
     let needs_diff = !profile.allow_external_diff || !profile.allow_textconv;

@@ -1318,3 +1318,70 @@ fn worktree_config_disabled_or_absent_is_not_an_activation() {
         );
     }
 }
+
+#[test]
+fn global_external_diff_is_contained_with_positive_control() {
+    // `diff.external` is a *top-level* key, not a `[diff "name"]` subsection, so the
+    // subsection scan structurally cannot see it — no enumeration, no neutralization.
+    // It is exactly the setting `GitExecutionProfile::hardened()` claims to disable.
+    let t = TempDir::new();
+    let repo = t.path().join("repo");
+    let runner = GitRunner::new();
+    init_repo(&runner, &repo);
+    let up = GitExecutionProfile::unhardened();
+
+    let marker = t.path().join("ext_diff_ran.marker");
+    let script = repo.join("ext-diff.sh");
+    fs::write(
+        &script,
+        format!("#!/bin/sh\ntouch '{}'\nexit 0\n", marker.display()),
+    )
+    .unwrap();
+    fs::set_permissions(&script, fs::Permissions::from_mode(0o755)).unwrap();
+
+    fs::write(repo.join("a.txt"), "v1\n").unwrap();
+    runner.spawn(&["add", "-A"], &repo, &up, &repo).unwrap();
+    runner
+        .spawn(&["commit", "-m", "seed"], &repo, &up, &repo)
+        .unwrap();
+    fs::write(repo.join("a.txt"), "v2\n").unwrap();
+
+    append_cfg(
+        &repo,
+        &format!("[diff]\n\texternal = {}\n", script.display()),
+    );
+
+    // POSITIVE CONTROL: unhardened runs the external diff program.
+    runner.spawn(&["diff"], &repo, &up, &repo).unwrap();
+    assert!(
+        marker.exists(),
+        "positive control: diff.external must run without hardening"
+    );
+    fs::remove_file(&marker).unwrap();
+
+    // GOVERNED: the hardened profile must neutralize it.
+    let hp = GitExecutionProfile::hardened();
+    runner.spawn(&["diff"], &repo, &hp, &repo).unwrap();
+    assert!(
+        !marker.exists(),
+        "ESCAPE: diff.external ran under the hardened profile"
+    );
+}
+
+#[test]
+fn global_external_diff_neutralization_does_not_depend_on_enumeration() {
+    // The blanking must be unconditional, not driven by scanning the config. A repo whose
+    // config the scanner refuses to enumerate is already denied; a repo it *can* enumerate
+    // must still get `diff.external` blanked even though no `[diff "name"]` exists.
+    let t = TempDir::new();
+    let repo = t.path().join("repo");
+    let runner = GitRunner::new();
+    init_repo(&runner, &repo);
+    let hp = GitExecutionProfile::hardened();
+    let args = hardening_args(&hp, &repo).expect("clean repo must not be refused");
+    assert!(
+        args.windows(2)
+            .any(|w| w[0] == "-c" && w[1] == "diff.external="),
+        "hardened args must blank diff.external unconditionally, got {args:?}"
+    );
+}
