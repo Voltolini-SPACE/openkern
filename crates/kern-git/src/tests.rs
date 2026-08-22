@@ -1126,3 +1126,25 @@ fn no_public_entry_point_can_execute_a_smuggled_filter() {
         );
     }
 }
+#[test]
+fn unreadable_config_fails_closed_instead_of_skipping_enumeration() {
+    // A config file the scanner cannot read must not be silently skipped: skipping is a
+    // permissive fallback — enumeration would come back empty and nothing would be
+    // neutralized. Unreadable config is indeterminable config, so it must be refused.
+    let t = TempDir::new();
+    let repo = t.path().join("repo");
+    let runner = GitRunner::new();
+    init_repo(&runner, &repo);
+
+    let cfg = repo.join(".git/config");
+    fs::set_permissions(&cfg, fs::Permissions::from_mode(0o000)).unwrap();
+
+    let r = hardened_add(&runner, &repo, "f.dat");
+    // Restore permissions before any assertion can unwind and leak an unreadable file.
+    fs::set_permissions(&cfg, fs::Permissions::from_mode(0o644)).unwrap();
+
+    assert!(
+        matches!(r, Err(GitError::UnenumerableConfig { .. })),
+        "unreadable config must fail closed, got {r:?}"
+    );
+}

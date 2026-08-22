@@ -509,18 +509,31 @@ fn hardening_args(profile: &GitExecutionProfile, cwd: &Path) -> Result<Vec<Strin
         let mut filters = BTreeSet::new();
         let mut diffs = BTreeSet::new();
         for path in config_files(cwd) {
-            if let Ok(text) = std::fs::read_to_string(&path) {
-                if has_config_include(&text) {
+            let text = match std::fs::read_to_string(&path) {
+                Ok(text) => text,
+                // An absent config file carries nothing to enumerate. `config_files`
+                // returns both the git-dir and common-dir config and either may be
+                // missing (they are the same file outside a linked worktree).
+                Err(e) if e.kind() == std::io::ErrorKind::NotFound => continue,
+                // Present but unreadable is *indeterminable*, not empty. Skipping it
+                // would silently produce an empty enumeration and neutralize nothing —
+                // a permissive fallback exactly where a hostile repo wants one.
+                Err(_) => {
                     return Err(GitError::UnenumerableConfig {
                         path: path.display().to_string(),
-                    });
+                    })
                 }
-                if needs_filters {
-                    filters.extend(subsection_names(&text, "filter"));
-                }
-                if needs_diff {
-                    diffs.extend(subsection_names(&text, "diff"));
-                }
+            };
+            if has_config_include(&text) {
+                return Err(GitError::UnenumerableConfig {
+                    path: path.display().to_string(),
+                });
+            }
+            if needs_filters {
+                filters.extend(subsection_names(&text, "filter"));
+            }
+            if needs_diff {
+                diffs.extend(subsection_names(&text, "diff"));
             }
         }
         for name in filters {
