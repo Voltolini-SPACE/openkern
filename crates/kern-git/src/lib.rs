@@ -575,9 +575,15 @@ fn hardening_args(profile: &GitExecutionProfile, cwd: &Path) -> Result<Vec<Strin
 
     let needs_filters = !profile.allow_filters;
     let needs_diff = !profile.allow_external_diff || !profile.allow_textconv;
-    if needs_filters || needs_diff {
+    // Merge drivers are selected by `.gitattributes` exactly as filters are, but they are
+    // their own vector and answer to their own switch — `allow_filters` never authorizes
+    // them. Enumerating them here means they inherit, for free, the refusals that already
+    // guard the scan: `[include]`, `extensions.worktreeConfig`, and case-variant headers.
+    let needs_merge = !profile.allow_merge_drivers;
+    if needs_filters || needs_diff || needs_merge {
         let mut filters = BTreeSet::new();
         let mut diffs = BTreeSet::new();
+        let mut merges = BTreeSet::new();
         for path in config_files(cwd) {
             let text = match std::fs::read_to_string(&path) {
                 Ok(text) => text,
@@ -605,11 +611,17 @@ fn hardening_args(profile: &GitExecutionProfile, cwd: &Path) -> Result<Vec<Strin
             if needs_diff {
                 diffs.extend(subsection_names(&text, "diff"));
             }
+            if needs_merge {
+                merges.extend(subsection_names(&text, "merge"));
+            }
         }
         for name in filters {
             push(&format!("filter.{name}.clean"), "");
             push(&format!("filter.{name}.smudge"), "");
             push(&format!("filter.{name}.process"), "");
+        }
+        for name in merges {
+            push(&format!("merge.{name}.driver"), "");
         }
         for name in diffs {
             if !profile.allow_external_diff {

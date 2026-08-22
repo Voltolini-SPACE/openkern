@@ -1385,3 +1385,236 @@ fn global_external_diff_neutralization_does_not_depend_on_enumeration() {
         "hardened args must blank diff.external unconditionally, got {args:?}"
     );
 }
+
+// --- merge drivers: uma classe de driver própria, com flag própria ------------------
+
+/// Build a repo with a real merge conflict plus a driver script, and return the marker the
+/// driver touches. The driver definition itself is left to the caller so tests can vary
+/// *where* in the config it lives.
+fn merge_driver_repo(
+    t: &TempDir,
+    repo: &Path,
+    runner: &GitRunner,
+    attrs: &str,
+) -> (PathBuf, PathBuf) {
+    let up = GitExecutionProfile::unhardened();
+    init_repo(runner, repo);
+    let marker = t.path().join("merge_driver_ran.marker");
+    let script = repo.join("merge-drv.sh");
+    fs::write(
+        &script,
+        format!("#!/bin/sh\ntouch '{}'\nexit 0\n", marker.display()),
+    )
+    .unwrap();
+    fs::set_permissions(&script, fs::Permissions::from_mode(0o755)).unwrap();
+
+    fs::write(repo.join("a.txt"), "base\n").unwrap();
+    fs::write(repo.join(".gitattributes"), attrs).unwrap();
+    runner.spawn(&["add", "-A"], repo, &up, repo).unwrap();
+    runner
+        .spawn(&["commit", "-m", "base"], repo, &up, repo)
+        .unwrap();
+    runner
+        .spawn(&["checkout", "-b", "feat"], repo, &up, repo)
+        .unwrap();
+    fs::write(repo.join("a.txt"), "feat\n").unwrap();
+    runner
+        .spawn(&["commit", "-am", "feat"], repo, &up, repo)
+        .unwrap();
+    runner
+        .spawn(&["checkout", "main"], repo, &up, repo)
+        .unwrap();
+    fs::write(repo.join("a.txt"), "main\n").unwrap();
+    runner
+        .spawn(&["commit", "-am", "main"], repo, &up, repo)
+        .unwrap();
+    (marker, script)
+}
+
+fn merge_feat(runner: &GitRunner, repo: &Path, hardened: bool) -> Result<GitOutput, GitError> {
+    let p = if hardened {
+        GitExecutionProfile::hardened()
+    } else {
+        GitExecutionProfile::unhardened()
+    };
+    runner.spawn(&["merge", "feat", "-m", "m"], repo, &p, repo)
+}
+
+#[test]
+fn merge_driver_asymmetry_unhardened_executes_hardened_does_not() {
+    // The acceptance matrix in one test: the same hostile repository must execute the
+    // driver without hardening and must not execute it with hardening. One half alone
+    // proves nothing — together they prove the vector is real *and* contained.
+    // Each half gets its own repository. Reusing one would make the second half vacuous:
+    // the first merge completes and creates a merge commit, so a second `merge feat` is
+    // "Already up to date" and never invokes a driver at all.
+    let runner = GitRunner::new();
+
+    // UNHARDENED + malicious merge driver = EXECUTED
+    let t1 = TempDir::new();
+    let repo1 = t1.path().join("repo");
+    let (marker1, script1) = merge_driver_repo(&t1, &repo1, &runner, "*.txt merge=evil\n");
+    append_cfg(
+        &repo1,
+        &format!(
+            "[merge \"evil\"]\n\tname = evil\n\tdriver = {} %O %A %B\n",
+            script1.display()
+        ),
+    );
+    merge_feat(&runner, &repo1, false).unwrap();
+    assert!(
+        marker1.exists(),
+        "positive control: the merge driver must run without hardening"
+    );
+
+    // HARDENED + malicious merge driver = NOT EXECUTED
+    let t2 = TempDir::new();
+    let repo2 = t2.path().join("repo");
+    let (marker2, script2) = merge_driver_repo(&t2, &repo2, &runner, "*.txt merge=evil\n");
+    append_cfg(
+        &repo2,
+        &format!(
+            "[merge \"evil\"]\n\tname = evil\n\tdriver = {} %O %A %B\n",
+            script2.display()
+        ),
+    );
+    merge_feat(&runner, &repo2, true).unwrap();
+    assert!(
+        !marker2.exists(),
+        "ESCAPE: the merge driver ran under the hardened profile"
+    );
+}
+
+#[test]
+fn merge_driver_case_variant_is_neutralized() {
+    let t = TempDir::new();
+    let repo = t.path().join("repo");
+    let runner = GitRunner::new();
+    let (marker, script) = merge_driver_repo(&t, &repo, &runner, "*.txt merge=evil\n");
+    // Section name is case-insensitive to git; the subsection name is not.
+    append_cfg(
+        &repo,
+        &format!(
+            "[MeRgE \"evil\"]\n\tname = evil\n\tdriver = {} %O %A %B\n",
+            script.display()
+        ),
+    );
+    merge_feat(&runner, &repo, true).unwrap();
+    assert!(!marker.exists(), "ESCAPE: [MeRgE] was not neutralized");
+}
+
+#[test]
+fn multiple_merge_drivers_are_all_neutralized() {
+    let t = TempDir::new();
+    let repo = t.path().join("repo");
+    let runner = GitRunner::new();
+    let (marker, script) = merge_driver_repo(&t, &repo, &runner, "*.txt merge=second\n");
+    append_cfg(
+        &repo,
+        &format!(
+            "[merge \"first\"]\n\tname = a\n\tdriver = {s} %O %A %B\n\
+             [merge \"second\"]\n\tname = b\n\tdriver = {s} %O %A %B\n",
+            s = script.display()
+        ),
+    );
+    let args = hardening_args(&GitExecutionProfile::hardened(), &repo).unwrap();
+    for nome in ["first", "second"] {
+        assert!(
+            args.windows(2)
+                .any(|w| w[0] == "-c" && w[1] == format!("merge.{nome}.driver=")),
+            "driver {nome} must be blanked, got {args:?}"
+        );
+    }
+    merge_feat(&runner, &repo, true).unwrap();
+    assert!(!marker.exists(), "ESCAPE: a second merge driver ran");
+}
+
+#[test]
+fn merge_driver_smuggled_via_include_fails_closed() {
+    let t = TempDir::new();
+    let repo = t.path().join("repo");
+    let runner = GitRunner::new();
+    let (marker, script) = merge_driver_repo(&t, &repo, &runner, "*.txt merge=evil\n");
+    let inc = repo.join(".git").join("m.config");
+    fs::write(
+        &inc,
+        format!(
+            "[merge \"evil\"]\n\tname = evil\n\tdriver = {} %O %A %B\n",
+            script.display()
+        ),
+    )
+    .unwrap();
+    append_cfg(&repo, &format!("[include]\n\tpath = {}\n", inc.display()));
+
+    let r = merge_feat(&runner, &repo, true);
+    assert!(
+        matches!(r, Err(GitError::UnenumerableConfig { .. })),
+        "include carrying a merge driver must fail closed, got {r:?}"
+    );
+    assert!(!marker.exists(), "ESCAPE: driver ran via include");
+}
+
+#[test]
+fn merge_driver_smuggled_via_worktree_config_fails_closed() {
+    let t = TempDir::new();
+    let repo = t.path().join("repo");
+    let runner = GitRunner::new();
+    let (marker, script) = merge_driver_repo(&t, &repo, &runner, "*.txt merge=evil\n");
+    fs::write(
+        repo.join(".git").join("config.worktree"),
+        format!(
+            "[merge \"evil\"]\n\tname = evil\n\tdriver = {} %O %A %B\n",
+            script.display()
+        ),
+    )
+    .unwrap();
+    append_cfg(&repo, "[extensions]\n\tworktreeConfig = true\n");
+
+    let r = merge_feat(&runner, &repo, true);
+    assert!(
+        matches!(r, Err(GitError::UnenumerableConfig { .. })),
+        "config.worktree carrying a merge driver must fail closed, got {r:?}"
+    );
+    assert!(!marker.exists(), "ESCAPE: driver ran via config.worktree");
+}
+
+#[test]
+fn repository_without_merge_driver_is_unaffected() {
+    let t = TempDir::new();
+    let repo = t.path().join("repo");
+    let runner = GitRunner::new();
+    let (marker, _) = merge_driver_repo(&t, &repo, &runner, "*.txt text\n");
+    let out = merge_feat(&runner, &repo, true).expect("ordinary merge must not be refused");
+    let _ = out;
+    assert!(!marker.exists());
+    // And no merge.* override is emitted when there is nothing to neutralize.
+    let args = hardening_args(&GitExecutionProfile::hardened(), &repo).unwrap();
+    assert!(
+        !args.iter().any(|a| a.starts_with("merge.")),
+        "no merge override expected, got {args:?}"
+    );
+}
+
+#[test]
+fn unhardened_profile_still_permits_merge_drivers() {
+    // `unhardened()` must remain a real positive control. If it ever stopped permitting
+    // merge drivers, every containment test above would silently become vacuous.
+    let p = GitExecutionProfile::unhardened();
+    assert!(
+        p.allow_merge_drivers,
+        "unhardened must permit merge drivers"
+    );
+    assert!(
+        !GitExecutionProfile::hardened().allow_merge_drivers,
+        "hardened must deny merge drivers"
+    );
+    let t = TempDir::new();
+    let repo = t.path().join("repo");
+    let runner = GitRunner::new();
+    init_repo(&runner, &repo);
+    let args = hardening_args(&p, &repo).unwrap();
+    assert!(
+        !args.iter().any(|a| a.starts_with("merge.")),
+        "unhardened must not blank merge drivers, got {args:?}"
+    );
+}

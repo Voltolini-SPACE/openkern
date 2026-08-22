@@ -10,8 +10,15 @@
 ///
 /// This is intentionally a flat set of independent boolean switches — each maps to a
 /// distinct Git extensibility vector — so the `struct_excessive_bools` lint is allowed.
+///
+/// Marked `#[non_exhaustive]`: a profile is a security contract, and git keeps growing new
+/// extensibility vectors (`merge.*.driver` was one). Forcing construction through
+/// [`GitExecutionProfile::hardened`], [`GitExecutionProfile::unhardened`] or
+/// [`Default::default`] means a switch added later defaults to *denied* for every existing
+/// caller instead of failing to compile — or, worse, silently defaulting to permitted.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[allow(clippy::struct_excessive_bools)]
+#[non_exhaustive]
 pub struct GitExecutionProfile {
     /// Run `.git/hooks/*`.
     pub allow_hooks: bool,
@@ -21,6 +28,10 @@ pub struct GitExecutionProfile {
     pub allow_external_diff: bool,
     /// Honour `diff.*.textconv`.
     pub allow_textconv: bool,
+    /// Honour `merge.*.driver`. Merge drivers are selected by `.gitattributes` exactly as
+    /// filters are, but they are a distinct extensibility vector and therefore carry a
+    /// distinct switch: `allow_filters` must never be read as authorizing them.
+    pub allow_merge_drivers: bool,
     /// Honour `credential.helper`.
     pub allow_credential_helpers: bool,
     /// Honour `core.fsmonitor`.
@@ -42,6 +53,7 @@ impl Default for GitExecutionProfile {
             allow_filters: false,
             allow_external_diff: false,
             allow_textconv: false,
+            allow_merge_drivers: false,
             allow_credential_helpers: false,
             allow_fsmonitor: false,
             allow_remote: false,
@@ -67,6 +79,7 @@ impl GitExecutionProfile {
             allow_filters: true,
             allow_external_diff: true,
             allow_textconv: true,
+            allow_merge_drivers: true,
             allow_credential_helpers: true,
             allow_fsmonitor: true,
             allow_remote: true,
