@@ -610,3 +610,519 @@ fn expired_grant_cannot_mutate() {
     let err = txn.add(&["x.txt"], now()).expect_err("deadline passed");
     assert!(matches!(err, GitError::Denied(_)), "got {err:?}");
 }
+
+// ---------------------------------------------------------------------------
+// CRITICAL #2 — hardened profile escape via config the textual scan cannot see
+// ---------------------------------------------------------------------------
+
+/// Write a real clean-filter driver and return (`script_path`, `marker_path`).
+fn evil_filter_script(t: &TempDir, repo: &Path) -> (PathBuf, PathBuf) {
+    let marker = t.path().join("filter_ran.marker");
+    let script = repo.join("evil-clean.sh");
+    fs::write(
+        &script,
+        format!("#!/bin/sh\ntouch '{}'\ncat\n", marker.display()),
+    )
+    .unwrap();
+    fs::set_permissions(&script, fs::Permissions::from_mode(0o755)).unwrap();
+    (script, marker)
+}
+
+#[test]
+fn include_cannot_smuggle_a_filter_past_the_hardened_profile() {
+    let t = TempDir::new();
+    let repo = t.path().join("repo");
+    let runner = GitRunner::new();
+    init_repo(&runner, &repo);
+    let (script, marker) = evil_filter_script(&t, &repo);
+
+    // The filter lives in a SEPARATE file, pulled in by [include]. A textual scan of
+    // .git/config alone never sees `[filter "evil"]`, but git resolves the include.
+    let included = repo.join(".git").join("smuggled.config");
+    fs::write(
+        &included,
+        format!(
+            "[filter \"evil\"]\n\tclean = {}\n\trequired = false\n",
+            script.display()
+        ),
+    )
+    .unwrap();
+    let cfg = repo.join(".git/config");
+    let mut cfg_text = fs::read_to_string(&cfg).unwrap();
+    let _ = write!(cfg_text, "[include]\n\tpath = {}\n", included.display());
+    fs::write(&cfg, cfg_text).unwrap();
+    fs::write(repo.join(".gitattributes"), "*.dat filter=evil\n").unwrap();
+
+    // POSITIVE CONTROL: unhardened `add` runs the smuggled filter — the include works.
+    fs::write(repo.join("x.dat"), "data-x\n").unwrap();
+    let up = GitExecutionProfile::unhardened();
+    let a = runner
+        .spawn(&["add", "--", "x.dat"], &repo, &up, &repo)
+        .unwrap();
+    assert!(a.success, "control add failed: {}", a.stderr);
+    assert!(
+        marker.exists(),
+        "positive control: the included filter must actually run"
+    );
+    fs::remove_file(&marker).unwrap();
+
+    // GOVERNED: the hardened profile must not let the smuggled filter run.
+    fs::write(repo.join("y.dat"), "data-y\n").unwrap();
+    let hp = GitExecutionProfile::hardened();
+    let governed = runner.spawn(&["add", "--", "y.dat"], &repo, &hp, &repo);
+    assert!(
+        !marker.exists(),
+        "ESCAPE: a filter smuggled via [include] ran under the hardened profile"
+    );
+    // Fail-closed: config that cannot be exhaustively enumerated must be refused, not
+    // silently run with incomplete neutralization.
+    assert!(
+        governed.is_err(),
+        "hardened profile must refuse config it cannot fully enumerate"
+    );
+}
+
+#[test]
+fn case_variant_section_header_cannot_smuggle_a_filter() {
+    let t = TempDir::new();
+    let repo = t.path().join("repo");
+    let runner = GitRunner::new();
+    init_repo(&runner, &repo);
+    let (script, marker) = evil_filter_script(&t, &repo);
+
+    // git treats section NAMES case-insensitively; a scan for the literal `[filter "`
+    // misses `[FiLtEr "evil"]` while git still honours it.
+    let cfg = repo.join(".git/config");
+    let mut cfg_text = fs::read_to_string(&cfg).unwrap();
+    let _ = write!(
+        cfg_text,
+        "[FiLtEr \"evil\"]\n\tclean = {}\n\trequired = false\n",
+        script.display()
+    );
+    fs::write(&cfg, cfg_text).unwrap();
+    fs::write(repo.join(".gitattributes"), "*.dat filter=evil\n").unwrap();
+
+    fs::write(repo.join("x.dat"), "data-x\n").unwrap();
+    let up = GitExecutionProfile::unhardened();
+    let a = runner
+        .spawn(&["add", "--", "x.dat"], &repo, &up, &repo)
+        .unwrap();
+    assert!(a.success, "control add failed: {}", a.stderr);
+    assert!(
+        marker.exists(),
+        "positive control: case-variant section is honoured by git"
+    );
+    fs::remove_file(&marker).unwrap();
+
+    fs::write(repo.join("y.dat"), "data-y\n").unwrap();
+    let hp = GitExecutionProfile::hardened();
+    let a2 = runner
+        .spawn(&["add", "--", "y.dat"], &repo, &hp, &repo)
+        .unwrap();
+    assert!(a2.success, "governed add failed: {}", a2.stderr);
+    assert!(
+        !marker.exists(),
+        "ESCAPE: case-variant [FiLtEr] section was not neutralized"
+    );
+}
+
+// --- CRITICAL #2 adversarial battery: every include shape must fail closed ---------
+
+/// Append raw text to the repository's `.git/config`.
+fn append_cfg(repo: &Path, text: &str) {
+    let cfg = repo.join(".git/config");
+    let mut s = fs::read_to_string(&cfg).unwrap();
+    s.push_str(text);
+    fs::write(&cfg, s).unwrap();
+}
+
+/// A hardened `add` against `repo`, returning the result for inspection.
+fn hardened_add(runner: &GitRunner, repo: &Path, file: &str) -> Result<GitOutput, GitError> {
+    fs::write(repo.join(file), "payload\n").unwrap();
+    runner.spawn(
+        &["add", "--", file],
+        repo,
+        &GitExecutionProfile::hardened(),
+        repo,
+    )
+}
+
+#[test]
+fn every_include_shape_fails_closed() {
+    let cases: &[(&str, &str)] = &[
+        ("include relativo", "[include]\n\tpath = ./rel.config\n"),
+        ("include absoluto", "[include]\n\tpath = /etc/gitconfig\n"),
+        (
+            "include inexistente",
+            "[include]\n\tpath = ./does-not-exist\n",
+        ),
+        (
+            "include fora do repo",
+            "[include]\n\tpath = /tmp/outside.config\n",
+        ),
+        ("include em uma linha", "[include] path = ./rel.config\n"),
+        (
+            "includeIf gitdir",
+            "[includeIf \"gitdir:/\"]\n\tpath = ./rel.config\n",
+        ),
+        (
+            "includeIf onbranch",
+            "[includeIf \"onbranch:main\"]\n\tpath = ./rel.config\n",
+        ),
+        ("include caixa alta", "[INCLUDE]\n\tpath = ./rel.config\n"),
+        ("include caixa mista", "[InClUdE]\n\tpath = ./rel.config\n"),
+        ("include recuado", "   [include]\n\tpath = ./rel.config\n"),
+    ];
+
+    for (nome, cfg) in cases {
+        let t = TempDir::new();
+        let repo = t.path().join("repo");
+        let runner = GitRunner::new();
+        init_repo(&runner, &repo);
+        append_cfg(&repo, cfg);
+
+        let r = hardened_add(&runner, &repo, "f.dat");
+        assert!(
+            matches!(r, Err(GitError::UnenumerableConfig { .. })),
+            "{nome}: hardened profile must fail closed, got {r:?}"
+        );
+    }
+}
+
+#[test]
+fn chained_and_circular_includes_fail_closed() {
+    let t = TempDir::new();
+    let repo = t.path().join("repo");
+    let runner = GitRunner::new();
+    init_repo(&runner, &repo);
+
+    // a -> b -> a (circular), reached from .git/config.
+    let a = repo.join(".git").join("a.config");
+    let b = repo.join(".git").join("b.config");
+    fs::write(&a, format!("[include]\n\tpath = {}\n", b.display())).unwrap();
+    fs::write(&b, format!("[include]\n\tpath = {}\n", a.display())).unwrap();
+    append_cfg(&repo, &format!("[include]\n\tpath = {}\n", a.display()));
+
+    let r = hardened_add(&runner, &repo, "f.dat");
+    assert!(
+        matches!(r, Err(GitError::UnenumerableConfig { .. })),
+        "chained/circular include must fail closed, got {r:?}"
+    );
+}
+
+#[test]
+fn include_combined_with_an_authorized_filter_still_fails_closed() {
+    // An include next to a legitimately-enumerable filter must not be waved through
+    // just because the visible part looks containable.
+    let t = TempDir::new();
+    let repo = t.path().join("repo");
+    let runner = GitRunner::new();
+    init_repo(&runner, &repo);
+    let (script, marker) = evil_filter_script(&t, &repo);
+
+    let hidden = repo.join(".git").join("hidden.config");
+    fs::write(
+        &hidden,
+        format!(
+            "[filter \"sneaky\"]\n\tclean = {}\n\trequired = false\n",
+            script.display()
+        ),
+    )
+    .unwrap();
+    append_cfg(
+        &repo,
+        &format!(
+            "[filter \"visible\"]\n\tclean = cat\n[include]\n\tpath = {}\n",
+            hidden.display()
+        ),
+    );
+    fs::write(repo.join(".gitattributes"), "*.dat filter=sneaky\n").unwrap();
+
+    let r = hardened_add(&runner, &repo, "f.dat");
+    assert!(
+        matches!(r, Err(GitError::UnenumerableConfig { .. })),
+        "include beside a visible filter must still fail closed, got {r:?}"
+    );
+    assert!(!marker.exists(), "the smuggled filter must never have run");
+}
+
+#[test]
+fn malformed_config_does_not_silently_disable_containment() {
+    // Garbage that git itself rejects must not become a way to skip neutralization:
+    // the operation must not succeed while a filter is live.
+    let t = TempDir::new();
+    let repo = t.path().join("repo");
+    let runner = GitRunner::new();
+    init_repo(&runner, &repo);
+    let (script, marker) = evil_filter_script(&t, &repo);
+
+    append_cfg(
+        &repo,
+        &format!(
+            "[filter \"evil\"]\n\tclean = {}\n\trequired = false\n[unclosed section\n",
+            script.display()
+        ),
+    );
+    fs::write(repo.join(".gitattributes"), "*.dat filter=evil\n").unwrap();
+
+    let r = hardened_add(&runner, &repo, "f.dat");
+    // Either git refuses the malformed config, or we ran with the filter neutralized.
+    // What must never happen is a successful add with the filter having executed.
+    assert!(
+        !marker.exists(),
+        "malformed config must not become an escape: the filter ran"
+    );
+    if let Ok(out) = &r {
+        assert!(
+            !out.success || !marker.exists(),
+            "add succeeded with a live filter"
+        );
+    }
+}
+
+#[test]
+fn unhardened_profile_is_unaffected_by_the_include_refusal() {
+    // The refusal belongs to containment. A profile that allows filters has nothing to
+    // enumerate, so includes must not break it.
+    let t = TempDir::new();
+    let repo = t.path().join("repo");
+    let runner = GitRunner::new();
+    init_repo(&runner, &repo);
+    append_cfg(&repo, "[include]\n\tpath = ./whatever.config\n");
+
+    fs::write(repo.join("f.dat"), "payload\n").unwrap();
+    let out = runner
+        .spawn(
+            &["add", "--", "f.dat"],
+            &repo,
+            &GitExecutionProfile::unhardened(),
+            &repo,
+        )
+        .expect("unhardened profile must not be refused");
+    assert!(out.success, "unhardened add failed: {}", out.stderr);
+}
+
+#[test]
+fn clean_repository_is_not_refused() {
+    // Anti-regression for the refusal itself: no include, no refusal.
+    let t = TempDir::new();
+    let repo = t.path().join("repo");
+    let runner = GitRunner::new();
+    init_repo(&runner, &repo);
+    let out = hardened_add(&runner, &repo, "f.dat").expect("clean repo must not be refused");
+    assert!(
+        out.success,
+        "hardened add on a clean repo failed: {}",
+        out.stderr
+    );
+}
+
+#[test]
+fn include_refusal_blast_radius_is_the_whole_hardened_surface() {
+    // Documents a real consequence of failing closed: every public GitRunner helper uses
+    // the hardened profile, so a repository whose config carries an [include] becomes
+    // unusable through kern-git — including read-only operations. This is deliberate
+    // (refuse rather than run with a blind spot) but it is a wholesale refusal, not a
+    // mutation-only one, and callers must know that.
+    let t = TempDir::new();
+    let repo = t.path().join("repo");
+    let runner = GitRunner::new();
+    init_repo(&runner, &repo);
+    append_cfg(&repo, "[include]\n\tpath = ./whatever.config\n");
+
+    for (name, r) in [
+        (
+            "current_head",
+            runner.current_head(&repo, &repo).map(|_| ()),
+        ),
+        (
+            "status_porcelain",
+            runner.status_porcelain(&repo, &repo).map(|_| ()),
+        ),
+        ("branch_list", runner.branch_list(&repo, &repo).map(|_| ())),
+    ] {
+        assert!(
+            matches!(r, Err(GitError::UnenumerableConfig { .. })),
+            "{name} must fail closed on unenumerable config, got {r:?}"
+        );
+    }
+
+    // And a transaction cannot even be opened, because begin() reads HEAD.
+    let id = ident(&repo);
+    let grant = grant_for(&id, ALL_OPS);
+    let r = GitTransaction::begin(runner.clone(), ident(&repo), grant);
+    assert!(
+        matches!(r, Err(GitError::UnenumerableConfig { .. })),
+        "got {r:?}"
+    );
+}
+
+// --- §6 casos remanescentes -------------------------------------------------------
+
+#[test]
+fn multiple_includes_fail_closed() {
+    let t = TempDir::new();
+    let repo = t.path().join("repo");
+    let runner = GitRunner::new();
+    init_repo(&runner, &repo);
+    let (script, marker) = evil_filter_script(&t, &repo);
+
+    let one = repo.join(".git").join("one.config");
+    let two = repo.join(".git").join("two.config");
+    fs::write(&one, "[core]\n\tquotePath = false\n").unwrap();
+    fs::write(
+        &two,
+        format!(
+            "[filter \"evil\"]\n\tclean = {}\n\trequired = false\n",
+            script.display()
+        ),
+    )
+    .unwrap();
+    append_cfg(
+        &repo,
+        &format!(
+            "[include]\n\tpath = {}\n[include]\n\tpath = {}\n",
+            one.display(),
+            two.display()
+        ),
+    );
+    fs::write(repo.join(".gitattributes"), "*.dat filter=evil\n").unwrap();
+
+    let r = hardened_add(&runner, &repo, "f.dat");
+    assert!(
+        matches!(r, Err(GitError::UnenumerableConfig { .. })),
+        "multiple includes must fail closed, got {r:?}"
+    );
+    assert!(!marker.exists(), "the smuggled filter must never have run");
+}
+
+#[test]
+fn include_plus_case_variant_filter_fails_closed() {
+    let t = TempDir::new();
+    let repo = t.path().join("repo");
+    let runner = GitRunner::new();
+    init_repo(&runner, &repo);
+    let (script, marker) = evil_filter_script(&t, &repo);
+
+    // Case-variant section inside an included file: both bypasses combined.
+    let inc = repo.join(".git").join("inc.config");
+    fs::write(
+        &inc,
+        format!(
+            "[FiLtEr \"evil\"]\n\tclean = {}\n\trequired = false\n",
+            script.display()
+        ),
+    )
+    .unwrap();
+    append_cfg(&repo, &format!("[include]\n\tpath = {}\n", inc.display()));
+    fs::write(repo.join(".gitattributes"), "*.dat filter=evil\n").unwrap();
+
+    let r = hardened_add(&runner, &repo, "f.dat");
+    assert!(
+        matches!(r, Err(GitError::UnenumerableConfig { .. })),
+        "include + case variant must fail closed, got {r:?}"
+    );
+    assert!(!marker.exists());
+}
+
+// --- §7 PROVA NEGATIVA ------------------------------------------------------------
+
+#[test]
+fn no_public_entry_point_can_execute_a_smuggled_filter() {
+    // One hostile repository, every public entry point of the crate. The marker must
+    // never appear: no path may reach arbitrary execution, and no path may quietly
+    // succeed with containment skipped.
+    for (nome, variante) in [
+        ("include", 0u8),
+        ("include em cadeia", 1),
+        ("multiplas definicoes", 2),
+        ("caixa variante", 3),
+        ("malformada + include", 4),
+    ] {
+        let t = TempDir::new();
+        let repo = t.path().join("repo");
+        let runner = GitRunner::new();
+        init_repo(&runner, &repo);
+        let (script, marker) = evil_filter_script(&t, &repo);
+        let filtro = format!(
+            "[filter \"evil\"]\n\tclean = {}\n\tsmudge = {}\n\trequired = false\n",
+            script.display(),
+            script.display()
+        );
+        let gd = repo.join(".git");
+        match variante {
+            0 => {
+                fs::write(gd.join("i.config"), &filtro).unwrap();
+                append_cfg(
+                    &repo,
+                    &format!("[include]\n\tpath = {}\n", gd.join("i.config").display()),
+                );
+            }
+            1 => {
+                fs::write(gd.join("b.config"), &filtro).unwrap();
+                fs::write(
+                    gd.join("a.config"),
+                    format!("[include]\n\tpath = {}\n", gd.join("b.config").display()),
+                )
+                .unwrap();
+                append_cfg(
+                    &repo,
+                    &format!("[include]\n\tpath = {}\n", gd.join("a.config").display()),
+                );
+            }
+            2 => {
+                fs::write(gd.join("i.config"), &filtro).unwrap();
+                append_cfg(&repo, &filtro);
+                append_cfg(
+                    &repo,
+                    &format!("[include]\n\tpath = {}\n", gd.join("i.config").display()),
+                );
+            }
+            3 => {
+                append_cfg(
+                    &repo,
+                    &format!(
+                        "[FiLtEr \"evil\"]\n\tclean = {}\n\trequired = false\n",
+                        script.display()
+                    ),
+                );
+            }
+            _ => {
+                fs::write(gd.join("i.config"), &filtro).unwrap();
+                append_cfg(
+                    &repo,
+                    &format!(
+                        "[include]\n\tpath = {}\n[unclosed\n",
+                        gd.join("i.config").display()
+                    ),
+                );
+            }
+        }
+        fs::write(repo.join(".gitattributes"), "*.dat filter=evil\n").unwrap();
+        fs::write(repo.join("hostile.dat"), "payload\n").unwrap();
+
+        // Every public entry point.
+        let _ = runner.current_head(&repo, &repo);
+        let _ = runner.status_porcelain(&repo, &repo);
+        let _ = runner.branch_list(&repo, &repo);
+        let _ = runner.set_local_identity(&repo, "N", "e@x", &repo);
+        let _ = runner.init(&repo, &repo);
+        let _ = runner.worktree_add(&repo, t.path().join("wt-x").to_str().unwrap(), "bx", &repo);
+        // And the transactional surface, if it can even be opened.
+        let id = RepositoryIdentity::resolve(&repo);
+        if let Ok(id) = id {
+            let grant = grant_for(&id, ALL_OPS);
+            if let Ok(mut txn) = GitTransaction::begin(runner.clone(), ident(&repo), grant) {
+                let _ = txn.add(&["hostile.dat"], now());
+                let _ = txn.commit("hostile", now());
+                let _ = txn.branch_create("hb", now());
+                let _ = txn.restore(&["hostile.dat"], now());
+            }
+        }
+
+        assert!(
+            !marker.exists(),
+            "{nome}: arbitrary execution reached through a public entry point"
+        );
+    }
+}

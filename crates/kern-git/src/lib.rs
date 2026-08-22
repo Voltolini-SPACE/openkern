@@ -79,6 +79,13 @@ pub enum GitError {
         /// Worktree the identity would act upon.
         target: String,
     },
+    /// The repository config pulls in files the containment scan cannot enumerate
+    /// (`[include]` / `[includeIf]`), so filter/diff neutralization cannot be proven
+    /// complete. Fail-closed: refused rather than run with a blind spot.
+    UnenumerableConfig {
+        /// The config file carrying the include directive.
+        path: String,
+    },
 }
 
 impl core::fmt::Display for GitError {
@@ -100,6 +107,10 @@ impl core::fmt::Display for GitError {
             GitError::WorktreeMismatch { authorized, target } => write!(
                 f,
                 "capability is pinned to worktree {authorized} but the effect targets {target}"
+            ),
+            GitError::UnenumerableConfig { path } => write!(
+                f,
+                "refusing: {path} includes config that cannot be exhaustively enumerated"
             ),
         }
     }
@@ -128,7 +139,7 @@ impl GitRunner {
         profile: &GitExecutionProfile,
         home: &Path,
     ) -> Result<GitOutput, GitError> {
-        let mut full: Vec<String> = hardening_args(profile, cwd);
+        let mut full: Vec<String> = hardening_args(profile, cwd)?;
         full.extend(args.iter().map(|s| (*s).to_string()));
 
         let mut cmd = Command::new("git");
@@ -431,12 +442,19 @@ fn config_files(cwd: &Path) -> Vec<PathBuf> {
 }
 
 /// Extract subsection names of `[section "name"]` headers from a config file's text.
+///
+/// Git matches **section names case-insensitively** but subsection names case-sensitively,
+/// so `[FiLtEr "evil"]` defines the very same driver as `[filter "evil"]`. Matching the
+/// literal lowercase prefix would miss it and leave the driver un-neutralized.
 fn subsection_names(text: &str, section: &str) -> Vec<String> {
-    let open = format!("[{section} \"");
+    let open = format!("[{} \"", section.to_ascii_lowercase());
     let mut out = Vec::new();
     for line in text.lines() {
         let l = line.trim();
-        if let Some(rest) = l.strip_prefix(open.as_str()) {
+        // `open` is pure ASCII, so a lowercase-prefix match guarantees the first
+        // `open.len()` bytes of `l` are ASCII and slicing there is on a char boundary.
+        if l.to_ascii_lowercase().starts_with(&open) {
+            let rest = &l[open.len()..];
             if let Some(end) = rest.find("\"]") {
                 out.push(rest[..end].to_string());
             }
@@ -445,8 +463,27 @@ fn subsection_names(text: &str, section: &str) -> Vec<String> {
     out
 }
 
+/// Does this config text pull in configuration this scanner cannot see?
+///
+/// `[include]` / `[includeIf "…"]` make the effective configuration a transitive closure
+/// that a single-file textual scan cannot enumerate. Git resolves those includes; the
+/// enumerate-and-neutralize strategy therefore has a blind spot exactly where a hostile
+/// repository would place a filter driver.
+fn has_config_include(text: &str) -> bool {
+    text.lines().any(|line| {
+        let l = line.trim().to_ascii_lowercase();
+        l.starts_with("[include]") || l.starts_with("[include ") || l.starts_with("[includeif")
+    })
+}
+
 /// Build the hardening `-c` overrides for a profile against the repo at `cwd`.
-fn hardening_args(profile: &GitExecutionProfile, cwd: &Path) -> Vec<String> {
+///
+/// Fails closed: when the profile must contain filter/diff drivers but the repository's
+/// config pulls in files this scanner cannot enumerate (`[include]`/`[includeIf]`), the
+/// invocation is **refused** rather than run with incomplete neutralization. Resolving the
+/// include closure would mean re-implementing git's config parser — a second parser to
+/// disagree with git is a new attack surface, not a containment.
+fn hardening_args(profile: &GitExecutionProfile, cwd: &Path) -> Result<Vec<String>, GitError> {
     let mut args: Vec<String> = Vec::new();
     let mut push = |k: &str, v: &str| {
         args.push("-c".to_string());
@@ -473,6 +510,11 @@ fn hardening_args(profile: &GitExecutionProfile, cwd: &Path) -> Vec<String> {
         let mut diffs = BTreeSet::new();
         for path in config_files(cwd) {
             if let Ok(text) = std::fs::read_to_string(&path) {
+                if has_config_include(&text) {
+                    return Err(GitError::UnenumerableConfig {
+                        path: path.display().to_string(),
+                    });
+                }
                 if needs_filters {
                     filters.extend(subsection_names(&text, "filter"));
                 }
@@ -496,7 +538,7 @@ fn hardening_args(profile: &GitExecutionProfile, cwd: &Path) -> Vec<String> {
         }
     }
 
-    args
+    Ok(args)
 }
 
 #[cfg(test)]
