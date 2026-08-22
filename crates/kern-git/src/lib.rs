@@ -476,6 +476,69 @@ fn has_config_include(text: &str) -> bool {
     })
 }
 
+/// Is this line the `worktreeConfig` key, and if so is it enabled?
+///
+/// Returns `None` when the line is not that key at all. Git booleans are
+/// `true`/`yes`/`on`/`1` and `false`/`no`/`off`/`0`; a bare key with no `=` is *true*, and
+/// an empty value is *false*. Anything else is not a boolean git accepts, so it is treated
+/// as enabled: git would reject the config outright, and guessing "disabled" would be the
+/// permissive read of an indeterminable value.
+fn worktree_config_value(line: &str) -> Option<bool> {
+    let (key, value) = match line.split_once('=') {
+        Some((k, v)) => (k, Some(v)),
+        None => (line, None),
+    };
+    let strip_comment = |s: &str| {
+        s.split(['#', ';'])
+            .next()
+            .unwrap_or("")
+            .trim()
+            .to_ascii_lowercase()
+    };
+    if strip_comment(key) != "worktreeconfig" {
+        return None;
+    }
+    match value.map(strip_comment) {
+        None => Some(true),
+        Some(v) if v.is_empty() => Some(false),
+        Some(v) => Some(!matches!(v.as_str(), "false" | "no" | "off" | "0")),
+    }
+}
+
+/// Does this config enable `extensions.worktreeConfig`?
+///
+/// The extension moves part of the effective configuration into `$GIT_DIR/config.worktree`,
+/// a file [`config_files`] does not enumerate — so a filter driver placed there would never
+/// be neutralized while git honours it. Detecting the switch is enough to fail closed;
+/// enumerating the extra file instead would widen the scan exactly where the strategy is to
+/// refuse configuration that relocates the source of truth.
+///
+/// Note this is *not* gated on `repositoryformatversion`: unlike other extensions,
+/// `worktreeConfig` is honoured at version 0 as well (measured against git 2.50.1).
+fn enables_worktree_config(text: &str) -> bool {
+    let mut in_extensions = false;
+    for line in text.lines() {
+        let l = line.trim();
+        if let Some(rest) = l.strip_prefix('[') {
+            let lower = rest.to_ascii_lowercase();
+            in_extensions = lower.starts_with("extensions]") || lower.starts_with("extensions ");
+            // One-line form: `[extensions] worktreeConfig = true`.
+            if in_extensions {
+                if let Some(tail) = l.split_once(']').map(|(_, t)| t.trim()) {
+                    if worktree_config_value(tail) == Some(true) {
+                        return true;
+                    }
+                }
+            }
+            continue;
+        }
+        if in_extensions && worktree_config_value(l) == Some(true) {
+            return true;
+        }
+    }
+    false
+}
+
 /// Build the hardening `-c` overrides for a profile against the repo at `cwd`.
 ///
 /// Fails closed: when the profile must contain filter/diff drivers but the repository's
@@ -524,7 +587,7 @@ fn hardening_args(profile: &GitExecutionProfile, cwd: &Path) -> Result<Vec<Strin
                     })
                 }
             };
-            if has_config_include(&text) {
+            if has_config_include(&text) || enables_worktree_config(&text) {
                 return Err(GitError::UnenumerableConfig {
                     path: path.display().to_string(),
                 });

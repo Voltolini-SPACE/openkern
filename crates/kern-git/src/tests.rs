@@ -1027,17 +1027,36 @@ fn include_plus_case_variant_filter_fails_closed() {
 
 // --- §7 PROVA NEGATIVA ------------------------------------------------------------
 
+/// Every known way to get a filter driver into the effective config, against every public
+/// entry point of the crate. The marker must never appear: no path may reach arbitrary
+/// execution, and no path may quietly succeed with containment skipped.
+///
+/// The universal claim in the name is quantified over the mechanisms enumerated below,
+/// which is every mechanism by which repository-controlled input can define a filter for a
+/// governed invocation:
+///
+/// - a driver written straight into `.git/config` (covered here and by
+///   `git_clean_filter_is_contained_with_positive_control`);
+/// - a case-variant section header, which git matches but a literal scan does not;
+/// - `[include]` / `[includeIf]`, directly, chained, and beside a visible definition;
+/// - `extensions.worktreeConfig`, which relocates part of the config into
+///   `.git/config.worktree`;
+/// - a config file that cannot be read (`unreadable_config_fails_closed_…`).
+///
+/// Ambient sources are neutralized outside this test and are therefore not variants here:
+/// system and global config via `GIT_CONFIG_NOSYSTEM` and `GIT_CONFIG_GLOBAL=/dev/null`,
+/// `GIT_CONFIG_COUNT`/`KEY`/`VALUE` via `env_clear`, and `-c` because the argument vector
+/// is ours. Adding a mechanism to git means adding a variant here before the name holds
+/// again.
 #[test]
 fn no_public_entry_point_can_execute_a_smuggled_filter() {
-    // One hostile repository, every public entry point of the crate. The marker must
-    // never appear: no path may reach arbitrary execution, and no path may quietly
-    // succeed with containment skipped.
     for (nome, variante) in [
         ("include", 0u8),
         ("include em cadeia", 1),
         ("multiplas definicoes", 2),
         ("caixa variante", 3),
         ("malformada + include", 4),
+        ("extensions.worktreeConfig", 5),
     ] {
         let t = TempDir::new();
         let repo = t.path().join("repo");
@@ -1087,7 +1106,7 @@ fn no_public_entry_point_can_execute_a_smuggled_filter() {
                     ),
                 );
             }
-            _ => {
+            4 => {
                 fs::write(gd.join("i.config"), &filtro).unwrap();
                 append_cfg(
                     &repo,
@@ -1096,6 +1115,12 @@ fn no_public_entry_point_can_execute_a_smuggled_filter() {
                         gd.join("i.config").display()
                     ),
                 );
+            }
+            _ => {
+                // The driver lives in config.worktree; `.git/config` carries neither a
+                // filter nor an include — only the extension that relocates the config.
+                fs::write(gd.join("config.worktree"), &filtro).unwrap();
+                append_cfg(&repo, "[extensions]\n\tworktreeConfig = true\n");
             }
         }
         fs::write(repo.join(".gitattributes"), "*.dat filter=evil\n").unwrap();
@@ -1147,4 +1172,149 @@ fn unreadable_config_fails_closed_instead_of_skipping_enumeration() {
         matches!(r, Err(GitError::UnenumerableConfig { .. })),
         "unreadable config must fail closed, got {r:?}"
     );
+}
+
+// --- config.worktree: a extensão desloca a fonte da verdade -----------------------
+
+/// Install a filter driver in `.git/config.worktree` and return its marker path.
+fn smuggle_via_worktree_config(t: &TempDir, repo: &Path) -> PathBuf {
+    let marker = t.path().join("wtc_filter_ran.marker");
+    let script = repo.join("wtc-clean.sh");
+    fs::write(
+        &script,
+        format!("#!/bin/sh\ntouch '{}'\ncat\n", marker.display()),
+    )
+    .unwrap();
+    fs::set_permissions(&script, fs::Permissions::from_mode(0o755)).unwrap();
+    fs::write(
+        repo.join(".git").join("config.worktree"),
+        format!(
+            "[filter \"evil\"]\n\tclean = {}\n\trequired = false\n",
+            script.display()
+        ),
+    )
+    .unwrap();
+    fs::write(repo.join(".gitattributes"), "*.dat filter=evil\n").unwrap();
+    marker
+}
+
+#[test]
+fn worktree_config_extension_fails_closed() {
+    // `extensions.worktreeConfig` moves part of the effective config into
+    // `.git/config.worktree`, which the containment scan does not enumerate. The
+    // scanned `.git/config` carries no `[filter]` and no `[include]` — only the
+    // extension — so nothing else in the scanner can notice.
+    let t = TempDir::new();
+    let repo = t.path().join("repo");
+    let runner = GitRunner::new();
+    init_repo(&runner, &repo);
+    let marker = smuggle_via_worktree_config(&t, &repo);
+    append_cfg(&repo, "[extensions]\n\tworktreeConfig = true\n");
+
+    // POSITIVE CONTROL: without hardening the smuggled filter really runs, so this
+    // test measures containment rather than a broken fixture.
+    fs::write(repo.join("x.dat"), "x\n").unwrap();
+    let up = GitExecutionProfile::unhardened();
+    let a = runner
+        .spawn(&["add", "--", "x.dat"], &repo, &up, &repo)
+        .unwrap();
+    assert!(a.success, "control add failed: {}", a.stderr);
+    assert!(
+        marker.exists(),
+        "positive control: config.worktree must be honoured by git"
+    );
+    fs::remove_file(&marker).unwrap();
+
+    // GOVERNED: refused, and the filter never runs.
+    let r = hardened_add(&runner, &repo, "y.dat");
+    assert!(
+        matches!(r, Err(GitError::UnenumerableConfig { .. })),
+        "worktreeConfig must fail closed, got {r:?}"
+    );
+    assert!(
+        !marker.exists(),
+        "ESCAPE: a filter in config.worktree ran under the hardened profile"
+    );
+}
+
+#[test]
+fn worktree_config_activation_forms_all_fail_closed() {
+    // Every spelling git accepts as "enabled" must be caught: bare key, one-line
+    // section, mixed case, and the alternate boolean words.
+    for forma in [
+        "[extensions]\n\tworktreeConfig = true\n",
+        "[extensions]\n\tworktreeConfig\n",
+        "[extensions] worktreeConfig = true\n",
+        "[ExTeNsIoNs]\n\tWorkTreeConfig = TRUE\n",
+        "[extensions]\n\tworktreeConfig = yes\n",
+        "[extensions]\n\tworktreeConfig = on\n",
+        "[extensions]\n\tworktreeConfig = 1\n",
+    ] {
+        let t = TempDir::new();
+        let repo = t.path().join("repo");
+        let runner = GitRunner::new();
+        init_repo(&runner, &repo);
+        let marker = smuggle_via_worktree_config(&t, &repo);
+        append_cfg(&repo, forma);
+
+        let r = hardened_add(&runner, &repo, "y.dat");
+        assert!(
+            matches!(r, Err(GitError::UnenumerableConfig { .. })),
+            "forma {forma:?} must fail closed, got {r:?}"
+        );
+        assert!(!marker.exists(), "forma {forma:?}: filter ran");
+    }
+}
+
+#[test]
+fn worktree_config_disabled_or_absent_is_not_an_activation() {
+    // Refusing must not spread to configs that do not move the source of truth.
+    // git honours `config.worktree` only when the extension is enabled; `false`,
+    // an empty value, and absence are all "not enabled" and must stay ALLOW.
+    // Ordinary repositories: our refusal must not fire *and* the operation must still
+    // work end to end.
+    for (nome, forma) in [
+        ("false", "[extensions]\n\tworktreeConfig = false\n"),
+        ("no", "[extensions]\n\tworktreeConfig = no\n"),
+        ("off", "[extensions]\n\tworktreeConfig = off\n"),
+        ("0", "[extensions]\n\tworktreeConfig = 0\n"),
+        ("vazio", "[extensions]\n\tworktreeConfig =\n"),
+        ("fora de [extensions]", "[core]\n\tworktreeConfig = true\n"),
+        ("ausente", ""),
+    ] {
+        let t = TempDir::new();
+        let repo = t.path().join("repo");
+        let runner = GitRunner::new();
+        init_repo(&runner, &repo);
+        if !forma.is_empty() {
+            append_cfg(&repo, forma);
+        }
+        let out = hardened_add(&runner, &repo, "y.dat")
+            .unwrap_or_else(|e| panic!("{nome}: must not be refused, got {e:?}"));
+        assert!(out.success, "{nome}: hardened add failed: {}", out.stderr);
+    }
+
+    // Other `[extensions]` keys. git itself may reject these depending on
+    // `repositoryformatversion` — `objectFormat` is v1-only and is fatal at v0, while
+    // `worktreeConfig` is deliberately exempt. That is git's business, not our
+    // containment's. The invariant we own is narrower and is the one asserted here:
+    // *our* refusal must not fire for a key that is not `worktreeConfig`.
+    for (nome, forma) in [
+        ("outra extensao", "[extensions]\n\tobjectFormat = sha1\n"),
+        (
+            "chave parecida",
+            "[extensions]\n\tworktreeConfigNotReally = true\n",
+        ),
+    ] {
+        let t = TempDir::new();
+        let repo = t.path().join("repo");
+        let runner = GitRunner::new();
+        init_repo(&runner, &repo);
+        append_cfg(&repo, forma);
+        let r = hardened_add(&runner, &repo, "y.dat");
+        assert!(
+            !matches!(r, Err(GitError::UnenumerableConfig { .. })),
+            "{nome}: our refusal must not fire for a non-worktreeConfig key, got {r:?}"
+        );
+    }
 }
