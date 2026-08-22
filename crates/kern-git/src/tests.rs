@@ -396,3 +396,217 @@ fn collect_rs(dir: &Path, out: &mut Vec<PathBuf>) {
         }
     }
 }
+// ---------------------------------------------------------------------------
+// CRITICAL #1 — repository/capability binding
+// ---------------------------------------------------------------------------
+
+/// Bind a grant to a specific repository id *and* worktree id.
+fn grant_bound(
+    repository: &RepositoryId,
+    worktree: Option<&kern_types::WorktreeId>,
+    fs_root: &Path,
+    ops: &[&str],
+) -> CapabilityGrant {
+    let spec = CapabilitySpec {
+        agent: AgentId::new("agent-git").unwrap(),
+        mission: MissionId::new("mission-git").unwrap(),
+        repository: RepositoryId::new(repository.as_str()).unwrap(),
+        worktree: worktree.map(|w| kern_types::WorktreeId::new(w.as_str()).unwrap()),
+        operations: ops.iter().map(|s| (*s).to_string()).collect(),
+        fs: FsScope::root(fs_root),
+        exec: ExecScope::new(["git"]),
+        network: NetworkMode::DenyAll,
+        deadline: Deadline::after(now(), Duration::from_secs(100_000)),
+        risk_ceiling: RiskClass::Mutating,
+    };
+    Capability::new(spec).grant(50)
+}
+
+// Reproduction record: before the binding check in `GitTransaction::begin`, a probe that
+// began a transaction with `grant(A)` and `identity(B)` succeeded and landed a real commit
+// in repository B. That probe passed against the unfixed code and fails against the fixed
+// code; `capability_of_a_is_denied_against_b` below is its permanent, inverted form.
+
+#[test]
+fn same_repository_binding_is_allowed_a_a() {
+    let t = TempDir::new();
+    let repo_a = t.path().join("repo-a");
+    let runner = GitRunner::new();
+    let id_a = init_repo(&runner, &repo_a);
+    let grant_a = grant_for(&id_a, ALL_OPS);
+
+    let mut txn = GitTransaction::begin(runner.clone(), ident(&repo_a), grant_a)
+        .expect("A/A must remain allowed");
+    fs::write(repo_a.join("a.txt"), "a\n").unwrap();
+    txn.add(&["a.txt"], now()).unwrap();
+    assert_ne!(txn.commit("legit A", now()).unwrap(), NULL_OID);
+}
+
+#[test]
+fn same_repository_binding_is_allowed_b_b() {
+    let t = TempDir::new();
+    let repo_b = t.path().join("repo-b");
+    let runner = GitRunner::new();
+    let id_b = init_repo(&runner, &repo_b);
+    let grant_b = grant_for(&id_b, ALL_OPS);
+
+    let mut txn = GitTransaction::begin(runner.clone(), ident(&repo_b), grant_b)
+        .expect("B/B must remain allowed");
+    fs::write(repo_b.join("b.txt"), "b\n").unwrap();
+    txn.add(&["b.txt"], now()).unwrap();
+    assert_ne!(txn.commit("legit B", now()).unwrap(), NULL_OID);
+}
+
+#[test]
+fn capability_of_a_is_denied_against_b() {
+    let t = TempDir::new();
+    let repo_a = t.path().join("repo-a");
+    let repo_b = t.path().join("repo-b");
+    let runner = GitRunner::new();
+    let id_a = init_repo(&runner, &repo_a);
+    let id_b = init_repo(&runner, &repo_b);
+
+    let grant_a = grant_for(&id_a, ALL_OPS);
+    let err = GitTransaction::begin(runner.clone(), id_b, grant_a).expect_err("A/B must be denied");
+    assert!(
+        matches!(err, GitError::RepositoryMismatch { .. }),
+        "expected RepositoryMismatch, got {err:?}"
+    );
+
+    // And nothing was written to B.
+    assert!(!repo_b.join("pwned.txt").exists());
+}
+
+#[test]
+fn capability_of_b_is_denied_against_a() {
+    let t = TempDir::new();
+    let repo_a = t.path().join("repo-a");
+    let repo_b = t.path().join("repo-b");
+    let runner = GitRunner::new();
+    let id_a = init_repo(&runner, &repo_a);
+    let id_b = init_repo(&runner, &repo_b);
+
+    let grant_b = grant_for(&id_b, ALL_OPS);
+    let err = GitTransaction::begin(runner.clone(), id_a, grant_b).expect_err("B/A must be denied");
+    assert!(matches!(err, GitError::RepositoryMismatch { .. }));
+}
+
+#[test]
+fn capability_bound_to_another_worktree_is_denied() {
+    let t = TempDir::new();
+    let repo = t.path().join("repo");
+    let runner = GitRunner::new();
+    let id = init_repo(&runner, &repo);
+
+    // An initial commit is required before a linked worktree can be added.
+    let grant = grant_for(&id, ALL_OPS);
+    let mut txn = GitTransaction::begin(runner.clone(), ident(&repo), grant).unwrap();
+    fs::write(repo.join("base.txt"), "base\n").unwrap();
+    txn.add(&["base.txt"], now()).unwrap();
+    txn.commit("base", now()).unwrap();
+
+    let wt_path = t.path().join("wt-feature");
+    runner
+        .worktree_add(&repo, wt_path.to_str().unwrap(), "feature", &repo)
+        .unwrap();
+
+    let main_id = ident(&repo);
+    let wt_id = ident(&wt_path);
+    assert!(main_id.same_repository(&wt_id), "same repository");
+    assert_ne!(
+        main_id.worktree_id(),
+        wt_id.worktree_id(),
+        "distinct worktrees"
+    );
+
+    // A capability pinned to the MAIN worktree must not act on the LINKED worktree,
+    // even though the repository id matches.
+    let grant_main = grant_bound(
+        main_id.repository_id(),
+        Some(main_id.worktree_id()),
+        &repo,
+        ALL_OPS,
+    );
+    let err = GitTransaction::begin(runner.clone(), ident(&wt_path), grant_main)
+        .expect_err("worktree-pinned capability must not cross worktrees");
+    assert!(
+        matches!(err, GitError::WorktreeMismatch { .. }),
+        "expected WorktreeMismatch, got {err:?}"
+    );
+
+    // The matching pair still works.
+    let grant_wt = grant_bound(
+        wt_id.repository_id(),
+        Some(wt_id.worktree_id()),
+        &wt_path,
+        ALL_OPS,
+    );
+    GitTransaction::begin(runner.clone(), ident(&wt_path), grant_wt)
+        .expect("worktree-matched capability must be allowed");
+}
+
+#[test]
+fn unpinned_worktree_capability_still_works_within_its_repository() {
+    // `worktree: None` means "any worktree of this repository" — repository binding
+    // must still be enforced, but worktree binding is not claimed.
+    let t = TempDir::new();
+    let repo = t.path().join("repo");
+    let runner = GitRunner::new();
+    let id = init_repo(&runner, &repo);
+    let grant = grant_bound(id.repository_id(), None, &repo, ALL_OPS);
+    GitTransaction::begin(runner.clone(), ident(&repo), grant)
+        .expect("unpinned worktree capability is valid within its own repository");
+}
+
+#[test]
+fn exhausted_grant_cannot_mutate() {
+    let t = TempDir::new();
+    let repo = t.path().join("repo");
+    let runner = GitRunner::new();
+    let id = init_repo(&runner, &repo);
+    let grant = Capability::new(CapabilitySpec {
+        agent: AgentId::new("agent-git").unwrap(),
+        mission: MissionId::new("mission-git").unwrap(),
+        repository: RepositoryId::new(id.repository_id().as_str()).unwrap(),
+        worktree: None,
+        operations: ALL_OPS.iter().map(|s| (*s).to_string()).collect(),
+        fs: FsScope::root(&repo),
+        exec: ExecScope::new(["git"]),
+        network: NetworkMode::DenyAll,
+        deadline: Deadline::after(now(), Duration::from_secs(100_000)),
+        risk_ceiling: RiskClass::Mutating,
+    })
+    .grant(0);
+
+    let mut txn = GitTransaction::begin(runner.clone(), ident(&repo), grant).unwrap();
+    fs::write(repo.join("x.txt"), "x\n").unwrap();
+    let err = txn.add(&["x.txt"], now()).expect_err("no uses left");
+    assert!(matches!(err, GitError::Denied(_)), "got {err:?}");
+}
+
+#[test]
+fn expired_grant_cannot_mutate() {
+    let t = TempDir::new();
+    let repo = t.path().join("repo");
+    let runner = GitRunner::new();
+    let id = init_repo(&runner, &repo);
+    let past = now().checked_sub(Duration::from_secs(10)).unwrap();
+    let grant = Capability::new(CapabilitySpec {
+        agent: AgentId::new("agent-git").unwrap(),
+        mission: MissionId::new("mission-git").unwrap(),
+        repository: RepositoryId::new(id.repository_id().as_str()).unwrap(),
+        worktree: None,
+        operations: ALL_OPS.iter().map(|s| (*s).to_string()).collect(),
+        fs: FsScope::root(&repo),
+        exec: ExecScope::new(["git"]),
+        network: NetworkMode::DenyAll,
+        deadline: Deadline::after(past, Duration::from_secs(1)),
+        risk_ceiling: RiskClass::Mutating,
+    })
+    .grant(50);
+
+    let mut txn = GitTransaction::begin(runner.clone(), ident(&repo), grant).unwrap();
+    fs::write(repo.join("x.txt"), "x\n").unwrap();
+    let err = txn.add(&["x.txt"], now()).expect_err("deadline passed");
+    assert!(matches!(err, GitError::Denied(_)), "got {err:?}");
+}

@@ -62,6 +62,23 @@ pub enum GitError {
     Denied(Denied),
     /// Repository identity could not be resolved.
     Repo(RepoError),
+    /// The capability authorizes a *different* repository than the one the effect would
+    /// land on. Authority must be bound to the object it acts upon: `authorized(A)` may
+    /// never produce `effect(B)`.
+    RepositoryMismatch {
+        /// Repository the capability authorizes.
+        authorized: String,
+        /// Repository the identity would act upon.
+        target: String,
+    },
+    /// The capability is pinned to a specific worktree and the identity names another one.
+    /// The repository may match; a worktree-pinned authority still may not cross worktrees.
+    WorktreeMismatch {
+        /// Worktree the capability authorizes.
+        authorized: String,
+        /// Worktree the identity would act upon.
+        target: String,
+    },
 }
 
 impl core::fmt::Display for GitError {
@@ -76,6 +93,14 @@ impl core::fmt::Display for GitError {
             }
             GitError::Denied(d) => write!(f, "denied: {d}"),
             GitError::Repo(e) => write!(f, "repo: {e}"),
+            GitError::RepositoryMismatch { authorized, target } => write!(
+                f,
+                "capability authorizes repository {authorized} but the effect targets {target}"
+            ),
+            GitError::WorktreeMismatch { authorized, target } => write!(
+                f,
+                "capability is pinned to worktree {authorized} but the effect targets {target}"
+            ),
         }
     }
 }
@@ -262,11 +287,36 @@ pub struct GitTransaction {
 impl GitTransaction {
     /// Begin a transaction. The expected head is captured from the repository now; each
     /// mutation re-verifies it.
+    ///
+    /// The grant is **bound to the identity** here: a capability minted for repository A
+    /// cannot open a transaction against repository B, and a capability pinned to one
+    /// worktree cannot act on another. Without this check the capability bounds nothing —
+    /// [`CapabilityGrant::authorize_operation`] re-uses the capability's *own* repository
+    /// to build its access request, so it can never notice a mismatched target. Binding
+    /// once at construction is sufficient because `identity` and `grant` are private and
+    /// never replaced for the life of the transaction.
     pub fn begin(
         runner: GitRunner,
         identity: RepositoryIdentity,
         grant: CapabilityGrant,
     ) -> Result<Self, GitError> {
+        let authorized_repo = grant.capability().repository();
+        if authorized_repo != identity.repository_id() {
+            return Err(GitError::RepositoryMismatch {
+                authorized: authorized_repo.as_str().to_string(),
+                target: identity.repository_id().as_str().to_string(),
+            });
+        }
+        // A capability with no worktree pin is valid for any worktree of its repository.
+        if let Some(authorized_wt) = grant.capability().worktree() {
+            if authorized_wt != identity.worktree_id() {
+                return Err(GitError::WorktreeMismatch {
+                    authorized: authorized_wt.as_str().to_string(),
+                    target: identity.worktree_id().as_str().to_string(),
+                });
+            }
+        }
+
         let home = identity.worktree().to_path_buf();
         let expected_head = runner.current_head(identity.worktree(), &home)?;
         Ok(Self {
